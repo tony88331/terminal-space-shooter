@@ -41,6 +41,6 @@ python3 space_shooter.py
 
 ## Screenshot
 
-Updated preview showing a chaotic mid-battle firefight:
+Updated preview showing a more realistic in-terminal battle scene:
 
 ![Terminal Space Shooter screenshot](screenshot.svg)
