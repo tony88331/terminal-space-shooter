@@ -15,6 +15,7 @@ ENEMY_SPAWN_CHANCE = 0.12
 MAX_ENEMIES = 12
 SHOT_COOLDOWN = 0.05
 INITIAL_LIVES = 5
+EXPLOSION_DURATION = 0.18
 
 SOUND_FILES = {
     "start": "/System/Library/Sounds/Hero.aiff",
@@ -80,6 +81,38 @@ def ship_cells(player_x, player_y):
     }
 
 
+def explosion_cells(center_x, center_y, age):
+    phase = age / EXPLOSION_DURATION
+    cells = {(center_x, center_y): ("*", 3)}
+
+    if phase < 0.33:
+        offsets = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        char = "+"
+        color = 3
+    elif phase < 0.66:
+        offsets = [
+            (-1, 0),
+            (1, 0),
+            (0, -1),
+            (0, 1),
+            (-1, -1),
+            (-1, 1),
+            (1, -1),
+            (1, 1),
+        ]
+        char = "*"
+        color = 2
+    else:
+        offsets = [(-2, 0), (2, 0), (0, -1), (0, 1)]
+        char = "."
+        color = 3
+
+    for offset_x, offset_y in offsets:
+        cells[(center_x + offset_x, center_y + offset_y)] = (char, color)
+
+    return cells
+
+
 def start_screen(stdscr):
     stdscr.clear()
     draw_center(stdscr, 3, "=== TERMINAL SPACE SHOOTER ===")
@@ -143,6 +176,7 @@ def run_game(stdscr):
         player_y = height // 2
         bullets = []
         enemies = []
+        explosions = []
         score = 0
         lives = INITIAL_LIVES
         last_shot_time = 0.0
@@ -209,9 +243,17 @@ def run_game(stdscr):
 
             if enemies_to_remove:
                 sound.play("hit", min_interval=0.05)
+                hit_time = time.time()
+                for e_idx in enemies_to_remove:
+                    enemy_x, enemy_y = enemies[e_idx]
+                    explosions.append({"x": enemy_x, "y": enemy_y, "started": hit_time})
 
             bullets = [b for idx, b in enumerate(bullets) if idx not in bullets_to_remove]
             enemies = [e for idx, e in enumerate(enemies) if idx not in enemies_to_remove]
+
+            explosions = [
+                effect for effect in explosions if now - effect["started"] < EXPLOSION_DURATION
+            ]
 
             filtered_enemies = []
             took_damage = False
@@ -255,6 +297,22 @@ def run_game(stdscr):
                         stdscr.addch(bullet_y, bullet_x, "|", curses.color_pair(3) | curses.A_BOLD)
                     except curses.error:
                         pass
+
+            for effect in explosions:
+                age = now - effect["started"]
+                for (effect_x, effect_y), (effect_char, color_pair) in explosion_cells(
+                    effect["x"], effect["y"], age
+                ).items():
+                    if 0 < effect_y < height and 0 < effect_x < width:
+                        try:
+                            stdscr.addch(
+                                effect_y,
+                                effect_x,
+                                effect_char,
+                                curses.color_pair(color_pair) | curses.A_BOLD,
+                            )
+                        except curses.error:
+                            pass
 
             for enemy_x, enemy_y in enemies:
                 if 0 < enemy_y < height and 0 < enemy_x < width:
