@@ -23,10 +23,23 @@
   <g fill="#ef4444" font-family="Menlo, Monaco, Consolas, monospace" font-size="34" font-weight="700" filter="url(#softGlow)">
     <text x="1030" y="180">&lt;</text>
     <text x="960" y="230">&lt;</text>
-    <text x="900" y="280">&lt;</text>
     <text x="980" y="350">&lt;</text>
     <text x="870" y="430">&lt;</text>
     <text x="1010" y="500">&lt;</text>
+  </g>
+
+  <g font-family="Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="700" filter="url(#softGlow)">
+    <text x="890" y="280" fill="#facc15">*</text>
+    <text x="860" y="280" fill="#facc15">+</text>
+    <text x="920" y="280" fill="#facc15">+</text>
+    <text x="890" y="250" fill="#facc15">+</text>
+    <text x="890" y="310" fill="#facc15">+</text>
+    <text x="860" y="250" fill="#ef4444">*</text>
+    <text x="920" y="250" fill="#ef4444">*</text>
+    <text x="860" y="310" fill="#ef4444">*</text>
+    <text x="920" y="310" fill="#ef4444">*</text>
+    <text x="830" y="280" fill="#facc15">.</text>
+    <text x="950" y="280" fill="#facc15">.</text>
   </g>
 
   <g fill="#facc15" font-family="Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="700" filter="url(#softGlow)">
@@ -35,6 +48,7 @@
     <text x="300" y="280">|</text>
     <text x="340" y="280">|</text>
     <text x="380" y="280">|</text>
+    <text x="820" y="280">|</text>
   </g>
 
   <g fill="#22d3ee" font-family="Menlo, Monaco, Consolas, monospace" font-size="34" font-weight="700" filter="url(#softGlow)">
