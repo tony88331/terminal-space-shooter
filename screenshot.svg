@@ -1,11 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-label="Terminal Space Shooter screenshot">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-label="Terminal Space Shooter intense battle gameplay screenshot">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0b1220"/>
-      <stop offset="100%" stop-color="#03060f"/>
+      <stop offset="0%" stop-color="#07111f"/>
+      <stop offset="60%" stop-color="#040816"/>
+      <stop offset="100%" stop-color="#02050d"/>
     </linearGradient>
-    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="2" result="blur"/>
+    <radialGradient id="blast" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff7ae"/>
+      <stop offset="35%" stop-color="#facc15"/>
+      <stop offset="75%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#7f1d1d" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.4" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -16,69 +23,118 @@
   <rect width="1200" height="700" fill="#0f172a"/>
   <rect x="70" y="60" width="1060" height="580" rx="16" fill="url(#bg)" stroke="#334155" stroke-width="2"/>
 
-  <text x="95" y="105" fill="#22c55e" font-family="Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="700">
-    Score: 420   Lives: 4   Enemy speed: 58%   Q: Quit
+  <text x="95" y="102" fill="#22c55e" font-family="Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="700">
+    Score: 4860   Lives: 2   Gun: Cannon [3]   Enemy speed: 72%   Q: Quit
+  </text>
+  <text x="95" y="136" fill="#22d3ee" font-family="Menlo, Monaco, Consolas, monospace" font-size="22" font-weight="700">
+    Guns: Left/Right switch   - slower   +/= faster   Space fire   P pause
   </text>
 
-  <g fill="#ef4444" font-family="Menlo, Monaco, Consolas, monospace" font-size="34" font-weight="700" filter="url(#softGlow)">
-    <text x="1030" y="180">&lt;</text>
-    <text x="960" y="230">&lt;</text>
-    <text x="980" y="350">&lt;</text>
-    <text x="870" y="430">&lt;</text>
-    <text x="1010" y="500">&lt;</text>
+  <g fill="#cbd5e1">
+    <circle cx="118" cy="174" r="1.2"/>
+    <circle cx="168" cy="512" r="1.1"/>
+    <circle cx="224" cy="244" r="1.4"/>
+    <circle cx="286" cy="586" r="1.3"/>
+    <circle cx="346" cy="172" r="1.2"/>
+    <circle cx="398" cy="436" r="1.5"/>
+    <circle cx="474" cy="284" r="1.2"/>
+    <circle cx="538" cy="548" r="1.1"/>
+    <circle cx="612" cy="196" r="1.3"/>
+    <circle cx="666" cy="610" r="1.2"/>
+    <circle cx="728" cy="232" r="1.4"/>
+    <circle cx="792" cy="488" r="1.2"/>
+    <circle cx="856" cy="158" r="1.1"/>
+    <circle cx="928" cy="408" r="1.4"/>
+    <circle cx="994" cy="214" r="1.2"/>
+    <circle cx="1068" cy="530" r="1.1"/>
   </g>
 
-  <g font-family="Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="700" filter="url(#softGlow)">
-    <text x="890" y="280" fill="#facc15">*</text>
-    <text x="860" y="280" fill="#facc15">+</text>
-    <text x="920" y="280" fill="#facc15">+</text>
-    <text x="890" y="250" fill="#facc15">+</text>
-    <text x="890" y="310" fill="#facc15">+</text>
-    <text x="860" y="250" fill="#ef4444">*</text>
-    <text x="920" y="250" fill="#ef4444">*</text>
-    <text x="860" y="310" fill="#ef4444">*</text>
-    <text x="920" y="310" fill="#ef4444">*</text>
-    <text x="830" y="280" fill="#facc15">.</text>
-    <text x="950" y="280" fill="#facc15">.</text>
-  </g>
-
-  <g fill="#facc15" font-family="Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="700" filter="url(#softGlow)">
-    <text x="220" y="280">|</text>
-    <text x="260" y="280">|</text>
-    <text x="300" y="280">|</text>
-    <text x="340" y="280">|</text>
-    <text x="380" y="280">|</text>
-    <text x="820" y="280">|</text>
+  <g stroke="#38bdf8" stroke-opacity="0.45" stroke-width="2">
+    <line x1="210" y1="196" x2="980" y2="142"/>
+    <line x1="190" y1="458" x2="1020" y2="508"/>
+    <line x1="300" y1="110" x2="840" y2="596"/>
   </g>
 
   <g fill="#22d3ee" font-family="Menlo, Monaco, Consolas, monospace" font-size="34" font-weight="700" filter="url(#softGlow)">
-    <text x="140" y="246">&gt;</text>
-    <text x="140" y="280">&gt;</text>
-    <text x="140" y="314">&gt;</text>
-    <text x="140" y="348">&gt;</text>
-    <text x="140" y="382">&gt;</text>
-    <text x="178" y="280">=</text>
-    <text x="178" y="314">=</text>
-    <text x="178" y="348">=</text>
-    <text x="214" y="280">]</text>
-    <text x="214" y="314">]</text>
-    <text x="214" y="348">]</text>
+    <text x="128" y="258">&gt;</text>
+    <text x="128" y="292">&gt;</text>
+    <text x="128" y="326">&gt;</text>
+    <text x="128" y="360">&gt;</text>
+    <text x="128" y="394">&gt;</text>
+    <text x="166" y="292">=</text>
+    <text x="166" y="326">=</text>
+    <text x="166" y="360">=</text>
+    <text x="202" y="292">]</text>
+    <text x="202" y="326">]</text>
+    <text x="202" y="360">]</text>
   </g>
 
-  <g fill="#94a3b8">
-    <circle cx="160" cy="160" r="1.5"/>
-    <circle cx="240" cy="200" r="1.5"/>
-    <circle cx="320" cy="540" r="1.5"/>
-    <circle cx="460" cy="140" r="1.5"/>
-    <circle cx="540" cy="420" r="1.5"/>
-    <circle cx="640" cy="240" r="1.5"/>
-    <circle cx="760" cy="520" r="1.5"/>
-    <circle cx="860" cy="170" r="1.5"/>
-    <circle cx="920" cy="300" r="1.5"/>
-    <circle cx="1080" cy="420" r="1.5"/>
+  <g fill="#facc15" font-family="Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="700" filter="url(#softGlow)">
+    <text x="258" y="292">=</text>
+    <text x="290" y="292">=</text>
+    <text x="322" y="292">=</text>
+    <text x="354" y="292">=</text>
+    <text x="386" y="292">=</text>
+    <text x="430" y="282">=</text>
+    <text x="462" y="276">=</text>
+    <text x="494" y="270">=</text>
+    <text x="526" y="264">=</text>
+    <text x="558" y="258">=</text>
+    <text x="430" y="334">=</text>
+    <text x="462" y="342">=</text>
+    <text x="494" y="350">=</text>
+    <text x="526" y="358">=</text>
+    <text x="558" y="366">=</text>
+    <text x="618" y="310">|</text>
+    <text x="648" y="310">|</text>
+    <text x="678" y="310">|</text>
+    <text x="708" y="310">|</text>
   </g>
 
-  <text x="95" y="620" fill="#64748b" font-family="Menlo, Monaco, Consolas, monospace" font-size="20">
-    terminal-space-shooter preview
-  </text>
+  <g fill="#ef4444" font-family="Menlo, Monaco, Consolas, monospace" font-size="34" font-weight="700" filter="url(#softGlow)">
+    <text x="924" y="182">&lt;</text>
+    <text x="1010" y="238">@</text>
+    <text x="948" y="310">#</text>
+    <text x="1044" y="358">&lt;</text>
+    <text x="900" y="424">@</text>
+    <text x="980" y="500">#</text>
+    <text x="862" y="554">&lt;</text>
+  </g>
+
+  <g fill="#a855f7" font-family="Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="700" filter="url(#softGlow)">
+    <text x="856" y="176">.</text>
+    <text x="882" y="188">.</text>
+    <text x="912" y="202">.</text>
+    <text x="940" y="216">.</text>
+    <text x="964" y="230">.</text>
+    <text x="886" y="418">o</text>
+    <text x="866" y="438">o</text>
+    <text x="846" y="458">o</text>
+    <text x="826" y="478">o</text>
+  </g>
+
+  <g>
+    <circle cx="820" cy="304" r="74" fill="url(#blast)" opacity="0.78"/>
+    <circle cx="820" cy="304" r="32" fill="#fff7ae" opacity="0.85"/>
+  </g>
+
+  <g font-family="Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="700" filter="url(#softGlow)">
+    <text x="786" y="308" fill="#facc15">*</text>
+    <text x="816" y="286" fill="#fff7ae">*</text>
+    <text x="846" y="308" fill="#f97316">*</text>
+    <text x="816" y="338" fill="#ef4444">*</text>
+    <text x="786" y="278" fill="#facc15">+</text>
+    <text x="852" y="278" fill="#facc15">+</text>
+    <text x="786" y="344" fill="#ef4444">+</text>
+    <text x="852" y="344" fill="#ef4444">+</text>
+    <text x="754" y="308" fill="#facc15">.</text>
+    <text x="882" y="308" fill="#facc15">.</text>
+    <text x="816" y="250" fill="#facc15">.</text>
+    <text x="816" y="372" fill="#ef4444">.</text>
+  </g>
+
+  <g font-family="Menlo, Monaco, Consolas, monospace" font-size="22" font-weight="700">
+    <text x="94" y="592" fill="#f97316">WARNING: swarm incoming from sector 7</text>
+    <text x="94" y="620" fill="#64748b">terminal-space-shooter preview — intense in-battle gameplay</text>
+  </g>
 </svg>

@@ -13,17 +13,164 @@ MAX_ENEMY_STEP_INTERVAL = 0.8
 ENEMY_SPEED_STEP = 0.03
 ENEMY_SPAWN_CHANCE = 0.12
 MAX_ENEMIES = 12
-SHOT_COOLDOWN = 0.05
 INITIAL_LIVES = 5
 EXPLOSION_DURATION = 0.18
 
 SOUND_FILES = {
     "start": "/System/Library/Sounds/Hero.aiff",
-    "shoot": "/System/Library/Sounds/Pop.aiff",
-    "hit": "/System/Library/Sounds/Tink.aiff",
-    "damage": "/System/Library/Sounds/Basso.aiff",
+    "gun_swap": "/System/Library/Sounds/Glass.aiff",
+    "shoot_rapid": "/System/Library/Sounds/Pop.aiff",
+    "shoot_spread": "/System/Library/Sounds/Ping.aiff",
+    "shoot_cannon": "/System/Library/Sounds/Bottle.aiff",
+    "hit_scout": "/System/Library/Sounds/Tink.aiff",
+    "destroy_scout": "/System/Library/Sounds/Frog.aiff",
+    "hit_spinner": "/System/Library/Sounds/Glass.aiff",
+    "destroy_spinner": "/System/Library/Sounds/Purr.aiff",
+    "hit_brute": "/System/Library/Sounds/Basso.aiff",
+    "destroy_brute": "/System/Library/Sounds/Blow.aiff",
+    "damage": "/System/Library/Sounds/Submarine.aiff",
     "game_over": "/System/Library/Sounds/Funk.aiff",
 }
+
+GUN_TYPES = [
+    {
+        "id": "rapid",
+        "name": "Rapid",
+        "hotkey": "1",
+        "cooldown": 0.04,
+        "sound": "shoot_rapid",
+        "projectiles": [
+            {"offset_y": 0, "dx": 2, "damage": 1, "char": ".", "color": 3},
+        ],
+    },
+    {
+        "id": "spread",
+        "name": "Spread",
+        "hotkey": "2",
+        "cooldown": 0.10,
+        "sound": "shoot_spread",
+        "projectiles": [
+            {"offset_y": -2, "dx": 1, "damage": 1, "char": "|", "color": 3},
+            {"offset_y": -1, "dx": 1, "damage": 1, "char": "|", "color": 3},
+            {"offset_y": 0, "dx": 1, "damage": 1, "char": "|", "color": 3},
+            {"offset_y": 1, "dx": 1, "damage": 1, "char": "|", "color": 3},
+            {"offset_y": 2, "dx": 1, "damage": 1, "char": "|", "color": 3},
+        ],
+    },
+    {
+        "id": "cannon",
+        "name": "Cannon",
+        "hotkey": "3",
+        "cooldown": 0.18,
+        "sound": "shoot_cannon",
+        "projectiles": [
+            {"offset_y": -1, "dx": 1, "damage": 2, "char": "=", "color": 5},
+            {"offset_y": 0, "dx": 1, "damage": 3, "char": "=", "color": 5},
+            {"offset_y": 1, "dx": 1, "damage": 2, "char": "=", "color": 5},
+        ],
+    },
+]
+
+ENEMY_TYPES = [
+    {
+        "id": "scout",
+        "name": "Scout",
+        "shape": "<",
+        "color": 2,
+        "health": 1,
+        "score": 10,
+        "spawn_weight": 0.50,
+        "speed": 1.20,
+        "hit_sound": "hit_scout",
+        "destroy_sound": "destroy_scout",
+        "hit_effect": "spark",
+        "destroy_effect": "burst",
+    },
+    {
+        "id": "spinner",
+        "name": "Spinner",
+        "shape": "@",
+        "color": 6,
+        "health": 2,
+        "score": 20,
+        "spawn_weight": 0.30,
+        "speed": 1.45,
+        "hit_sound": "hit_spinner",
+        "destroy_sound": "destroy_spinner",
+        "hit_effect": "nova",
+        "destroy_effect": "nova",
+    },
+    {
+        "id": "brute",
+        "name": "Brute",
+        "shape": "#",
+        "color": 5,
+        "health": 4,
+        "score": 40,
+        "spawn_weight": 0.20,
+        "speed": 0.85,
+        "hit_sound": "hit_brute",
+        "destroy_sound": "destroy_brute",
+        "hit_effect": "chunk",
+        "destroy_effect": "shock",
+    },
+]
+
+EXPLOSION_STYLES = {
+    "spark": [
+        {"char": "+", "color": 3, "offsets": [(-1, 0), (1, 0), (0, -1), (0, 1)]},
+        {"char": ".", "color": 3, "offsets": [(-1, 0), (1, 0), (0, -1), (0, 1)]},
+        {"char": ".", "color": 2, "offsets": [(0, 0)]},
+    ],
+    "burst": [
+        {
+            "char": "*",
+            "color": 3,
+            "offsets": [
+                (-1, 0),
+                (1, 0),
+                (0, -1),
+                (0, 1),
+                (-1, -1),
+                (-1, 1),
+                (1, -1),
+                (1, 1),
+            ],
+        },
+        {"char": "*", "color": 2, "offsets": [(-2, 0), (2, 0), (0, -2), (0, 2)]},
+        {"char": ".", "color": 3, "offsets": [(-2, 0), (2, 0), (0, -1), (0, 1)]},
+    ],
+    "nova": [
+        {"char": "o", "color": 6, "offsets": [(-1, 0), (1, 0), (0, -1), (0, 1)]},
+        {"char": "*", "color": 6, "offsets": [(-1, -1), (-1, 1), (1, -1), (1, 1)]},
+        {"char": ".", "color": 3, "offsets": [(-2, 0), (2, 0), (0, -2), (0, 2)]},
+    ],
+    "chunk": [
+        {"char": "%", "color": 5, "offsets": [(0, 0), (-1, 0), (1, 0)]},
+        {"char": "x", "color": 5, "offsets": [(-1, -1), (-1, 1), (1, -1), (1, 1)]},
+        {"char": ".", "color": 2, "offsets": [(-2, 0), (2, 0), (0, -1), (0, 1)]},
+    ],
+    "shock": [
+        {"char": "#", "color": 5, "offsets": [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)]},
+        {
+            "char": "*",
+            "color": 3,
+            "offsets": [
+                (-2, 0),
+                (2, 0),
+                (0, -2),
+                (0, 2),
+                (-1, -1),
+                (-1, 1),
+                (1, -1),
+                (1, 1),
+            ],
+        },
+        {"char": ".", "color": 2, "offsets": [(-3, 0), (3, 0), (0, -2), (0, 2)]},
+    ],
+}
+
+GUN_BY_KEY = {ord(gun["hotkey"]): index for index, gun in enumerate(GUN_TYPES)}
 
 
 def clamp(value, low, high):
@@ -81,46 +228,80 @@ def ship_cells(player_x, player_y):
     }
 
 
-def explosion_cells(center_x, center_y, age):
-    phase = age / EXPLOSION_DURATION
-    cells = {(center_x, center_y): ("*", 3)}
+def select_gun(gun_index, sound, quiet=False):
+    gun_index %= len(GUN_TYPES)
+    if not quiet:
+        sound.play("gun_swap", min_interval=0.05)
+    return gun_index
 
-    if phase < 0.33:
-        offsets = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-        char = "+"
-        color = 3
-    elif phase < 0.66:
-        offsets = [
-            (-1, 0),
-            (1, 0),
-            (0, -1),
-            (0, 1),
-            (-1, -1),
-            (-1, 1),
-            (1, -1),
-            (1, 1),
-        ]
-        char = "*"
-        color = 2
+
+def spawn_enemy(width, height):
+    enemy_type = random.choices(
+        ENEMY_TYPES,
+        weights=[enemy["spawn_weight"] for enemy in ENEMY_TYPES],
+        k=1,
+    )[0]
+    return {
+        "x": max(1, width - 2),
+        "y": random.randint(2, max(2, height - 2)),
+        "type": enemy_type,
+        "hp": enemy_type["health"],
+        "move_timer": 0.0,
+    }
+
+
+def fire_gun(bullets, player_x, player_y, gun, now):
+    for projectile in gun["projectiles"]:
+        bullets.append(
+            {
+                "x": player_x + 3,
+                "y": player_y + projectile["offset_y"],
+                "dx": projectile["dx"],
+                "damage": projectile["damage"],
+                "char": projectile["char"],
+                "color": projectile["color"],
+                "fired": now,
+            }
+        )
+
+
+def make_explosion(x, y, style, duration_multiplier=1.0):
+    return {
+        "x": x,
+        "y": y,
+        "style": style,
+        "started": time.time(),
+        "duration": EXPLOSION_DURATION * duration_multiplier,
+    }
+
+
+def explosion_cells(effect, age):
+    style = EXPLOSION_STYLES.get(effect["style"], EXPLOSION_STYLES["spark"])
+    if effect["duration"] <= 0:
+        phase_index = len(style) - 1
     else:
-        offsets = [(-2, 0), (2, 0), (0, -1), (0, 1)]
-        char = "."
-        color = 3
+        phase_index = min(len(style) - 1, int((age / effect["duration"]) * len(style)))
 
-    for offset_x, offset_y in offsets:
-        cells[(center_x + offset_x, center_y + offset_y)] = (char, color)
-
+    phase = style[phase_index]
+    cells = {(effect["x"], effect["y"]): (phase["char"], phase["color"])}
+    for offset_x, offset_y in phase["offsets"]:
+        cells[(effect["x"] + offset_x, effect["y"] + offset_y)] = (
+            phase["char"],
+            phase["color"],
+        )
     return cells
 
 
 def start_screen(stdscr):
     stdscr.clear()
-    draw_center(stdscr, 3, "=== TERMINAL SPACE SHOOTER ===")
-    draw_center(stdscr, 5, "Move: W/S or Up/Down")
-    draw_center(stdscr, 6, "Shoot: Space")
-    draw_center(stdscr, 7, "Enemy speed: Left/Right arrows")
-    draw_center(stdscr, 8, "Quit: Q")
-    draw_center(stdscr, 9, "Press any key to start")
+    draw_center(stdscr, 2, "=== TERMINAL SPACE SHOOTER ===")
+    draw_center(stdscr, 4, "Move: W/S or Up/Down")
+    draw_center(stdscr, 5, "Shoot: Space")
+    draw_center(stdscr, 6, "Switch guns: Left/Right arrows")
+    draw_center(stdscr, 7, "Enemy speed: - slower   + faster")
+    draw_center(stdscr, 8, "Pause: P    Quit: Q")
+    draw_center(stdscr, 10, "Enemies: < Scout (1 HP / 10)   @ Spinner (2 HP / 20)   # Brute (4 HP / 40)")
+    draw_center(stdscr, 12, "Press any key to start")
     stdscr.refresh()
     stdscr.nodelay(False)
     stdscr.getch()
@@ -143,6 +324,25 @@ def game_over_screen(stdscr, score):
             return True
 
 
+def pause_screen(stdscr):
+    height, _ = stdscr.getmaxyx()
+    draw_center(stdscr, max(3, height // 2 - 1), "PAUSED")
+    draw_center(stdscr, max(4, height // 2 + 1), "Press P to resume or Q to quit")
+    stdscr.refresh()
+
+    stdscr.nodelay(False)
+    while True:
+        key = stdscr.getch()
+        if key in (ord("p"), ord("P")):
+            stdscr.nodelay(True)
+            stdscr.timeout(0)
+            return True
+        if key in (ord("q"), ord("Q")):
+            stdscr.nodelay(True)
+            stdscr.timeout(0)
+            return False
+
+
 def run_game(stdscr):
     curses.curs_set(0)
     curses.start_color()
@@ -151,16 +351,18 @@ def run_game(stdscr):
     curses.init_pair(2, curses.COLOR_RED, -1)
     curses.init_pair(3, curses.COLOR_YELLOW, -1)
     curses.init_pair(4, curses.COLOR_GREEN, -1)
+    curses.init_pair(5, curses.COLOR_MAGENTA, -1)
+    curses.init_pair(6, curses.COLOR_BLUE, -1)
     sound = SoundEngine()
     stdscr.nodelay(True)
     stdscr.timeout(0)
 
     while True:
         height, width = stdscr.getmaxyx()
-        if height < 16 or width < 40:
+        if height < 18 or width < 60:
             stdscr.clear()
             draw_center(stdscr, 2, "Window too small")
-            draw_center(stdscr, 4, "Resize to at least 40x16")
+            draw_center(stdscr, 4, "Resize to at least 60x18")
             draw_center(stdscr, 6, "Press Q to quit")
             stdscr.refresh()
             key = stdscr.getch()
@@ -172,8 +374,9 @@ def run_game(stdscr):
         start_screen(stdscr)
         sound.play("start", min_interval=0.3)
 
-        player_x = width // 2
+        player_x = 2
         player_y = height // 2
+        gun_index = 1
         bullets = []
         enemies = []
         explosions = []
@@ -181,7 +384,6 @@ def run_game(stdscr):
         lives = INITIAL_LIVES
         last_shot_time = 0.0
         enemy_step_interval = ENEMY_STEP_INTERVAL
-        enemy_step_timer = 0.0
         last_frame_time = time.time()
 
         while lives > 0:
@@ -191,88 +393,131 @@ def run_game(stdscr):
             last_frame_time = now
 
             height, width = stdscr.getmaxyx()
-            player_x = 2
             player_y = clamp(player_y, 3, max(3, height - 4))
+            gun = GUN_TYPES[gun_index]
 
             key = stdscr.getch()
             if key in (ord("q"), ord("Q")):
                 return
+            if key in (ord("p"), ord("P")):
+                if not pause_screen(stdscr):
+                    return
+                last_frame_time = time.time()
+                continue
             if key in (ord("w"), ord("W"), curses.KEY_UP):
                 player_y -= 1
             elif key in (ord("s"), ord("S"), curses.KEY_DOWN):
                 player_y += 1
             elif key == curses.KEY_RIGHT:
-                enemy_step_interval = max(MIN_ENEMY_STEP_INTERVAL, enemy_step_interval - ENEMY_SPEED_STEP)
+                gun_index = select_gun(gun_index + 1, sound)
+                gun = GUN_TYPES[gun_index]
             elif key == curses.KEY_LEFT:
-                enemy_step_interval = min(MAX_ENEMY_STEP_INTERVAL, enemy_step_interval + ENEMY_SPEED_STEP)
+                gun_index = select_gun(gun_index - 1, sound)
+                gun = GUN_TYPES[gun_index]
+            elif key in (ord("+"), ord("=")):
+                enemy_step_interval = max(
+                    MIN_ENEMY_STEP_INTERVAL,
+                    enemy_step_interval - ENEMY_SPEED_STEP,
+                )
+            elif key in (ord("-"), ord("_")):
+                enemy_step_interval = min(
+                    MAX_ENEMY_STEP_INTERVAL,
+                    enemy_step_interval + ENEMY_SPEED_STEP,
+                )
+            elif key in GUN_BY_KEY:
+                gun_index = select_gun(GUN_BY_KEY[key], sound)
+                gun = GUN_TYPES[gun_index]
             elif key == ord(" "):
-                now = time.time()
-                if now - last_shot_time >= SHOT_COOLDOWN:
-                    bullets.append([player_x + 3, player_y - 2])
-                    bullets.append([player_x + 3, player_y - 1])
-                    bullets.append([player_x + 3, player_y])
-                    bullets.append([player_x + 3, player_y + 1])
-                    bullets.append([player_x + 3, player_y + 2])
+                if now - last_shot_time >= gun["cooldown"]:
+                    fire_gun(bullets, player_x, player_y, gun, now)
                     last_shot_time = now
-                    sound.play("shoot", min_interval=0.04)
+                    sound.play(gun["sound"], min_interval=0.03)
 
             player_y = clamp(player_y, 3, max(3, height - 4))
 
             if len(enemies) < MAX_ENEMIES and random.random() < ENEMY_SPAWN_CHANCE:
-                enemies.append([max(1, width - 2), random.randint(1, max(1, height - 2))])
+                enemies.append(spawn_enemy(width, height))
 
             for bullet in bullets:
-                bullet[0] += 1
-            bullets = [b for b in bullets if b[0] < width - 1]
+                bullet["x"] += bullet["dx"]
+            bullets = [bullet for bullet in bullets if bullet["x"] < width - 1]
 
-            enemy_step_timer += delta
-            if enemy_step_timer >= enemy_step_interval:
-                for enemy in enemies:
-                    enemy[0] -= 1
-                enemy_step_timer = 0.0
+            for enemy in enemies:
+                enemy["move_timer"] += delta
+                move_threshold = max(MIN_ENEMY_STEP_INTERVAL / 2, enemy_step_interval / enemy["type"]["speed"])
+                if enemy["move_timer"] >= move_threshold:
+                    enemy["x"] -= 1
+                    enemy["move_timer"] = 0.0
 
             bullets_to_remove = set()
-            enemies_to_remove = set()
-            for b_idx, bullet in enumerate(bullets):
-                for e_idx, enemy in enumerate(enemies):
-                    if bullet[0] == enemy[0] and bullet[1] == enemy[1]:
-                        bullets_to_remove.add(b_idx)
-                        enemies_to_remove.add(e_idx)
-                        score += 10
+            destroyed_enemy_ids = set()
+            for bullet_index, bullet in enumerate(bullets):
+                for enemy in enemies:
+                    if enemy["x"] == bullet["x"] and enemy["y"] == bullet["y"]:
+                        bullets_to_remove.add(bullet_index)
+                        enemy["hp"] -= bullet["damage"]
+                        enemy_type = enemy["type"]
+                        if enemy["hp"] <= 0:
+                            destroyed_enemy_ids.add(id(enemy))
+                            score += enemy_type["score"]
+                            explosions.append(
+                                make_explosion(
+                                    enemy["x"],
+                                    enemy["y"],
+                                    enemy_type["destroy_effect"],
+                                    duration_multiplier=1.35,
+                                )
+                            )
+                            sound.play(enemy_type["destroy_sound"], min_interval=0.03)
+                        else:
+                            explosions.append(
+                                make_explosion(
+                                    enemy["x"],
+                                    enemy["y"],
+                                    enemy_type["hit_effect"],
+                                    duration_multiplier=0.75,
+                                )
+                            )
+                            sound.play(enemy_type["hit_sound"], min_interval=0.03)
                         break
 
-            if enemies_to_remove:
-                sound.play("hit", min_interval=0.05)
-                hit_time = time.time()
-                for e_idx in enemies_to_remove:
-                    enemy_x, enemy_y = enemies[e_idx]
-                    explosions.append({"x": enemy_x, "y": enemy_y, "started": hit_time})
-
-            bullets = [b for idx, b in enumerate(bullets) if idx not in bullets_to_remove]
-            enemies = [e for idx, e in enumerate(enemies) if idx not in enemies_to_remove]
+            bullets = [
+                bullet for index, bullet in enumerate(bullets) if index not in bullets_to_remove
+            ]
+            enemies = [enemy for enemy in enemies if id(enemy) not in destroyed_enemy_ids]
 
             explosions = [
-                effect for effect in explosions if now - effect["started"] < EXPLOSION_DURATION
+                effect
+                for effect in explosions
+                if now - effect["started"] < effect["duration"]
             ]
 
             filtered_enemies = []
             took_damage = False
-            for enemy_x, enemy_y in enemies:
-                if enemy_x <= player_x:
+            for enemy in enemies:
+                if enemy["x"] <= player_x:
                     lives -= 1
                     took_damage = True
                 else:
-                    filtered_enemies.append([enemy_x, enemy_y])
+                    filtered_enemies.append(enemy)
             enemies = filtered_enemies
 
             ship_hit_cells = set(ship_cells(player_x, player_y).keys())
             remaining_enemies = []
-            for enemy_x, enemy_y in enemies:
-                if (enemy_x, enemy_y) in ship_hit_cells:
+            for enemy in enemies:
+                if (enemy["x"], enemy["y"]) in ship_hit_cells:
                     lives -= 1
                     took_damage = True
+                    explosions.append(
+                        make_explosion(
+                            enemy["x"],
+                            enemy["y"],
+                            enemy["type"]["destroy_effect"],
+                            duration_multiplier=1.0,
+                        )
+                    )
                 else:
-                    remaining_enemies.append([enemy_x, enemy_y])
+                    remaining_enemies.append(enemy)
             enemies = remaining_enemies
 
             if took_damage:
@@ -285,25 +530,39 @@ def run_game(stdscr):
                 / (MAX_ENEMY_STEP_INTERVAL - MIN_ENEMY_STEP_INTERVAL)
                 * 100
             )
-            top_bar = f" Score: {score}   Lives: {lives}   Enemy speed: {enemy_speed_percent}%   Q: Quit "
+            hud = (
+                f" Score: {score}   Lives: {lives}   Gun: {gun['name']} [Left/Right]"
+                f"   Enemy speed: {enemy_speed_percent}% [+/-]   P: Pause   Q: Quit "
+            )
             try:
-                stdscr.addstr(0, 0, top_bar[: max(0, width - 1)], curses.color_pair(4) | curses.A_BOLD)
+                stdscr.addstr(0, 0, hud[: max(0, width - 1)], curses.color_pair(4) | curses.A_BOLD)
             except curses.error:
                 pass
 
-            for bullet_x, bullet_y in bullets:
+            gun_line = " Guns: Left/Right cycle   Rapid (fast)   Spread (wide)   Cannon (heavy) "
+            try:
+                stdscr.addstr(1, 0, gun_line[: max(0, width - 1)], curses.color_pair(1) | curses.A_BOLD)
+            except curses.error:
+                pass
+
+            for bullet in bullets:
+                bullet_x = bullet["x"]
+                bullet_y = bullet["y"]
                 if 0 < bullet_y < height and 0 < bullet_x < width:
                     try:
-                        stdscr.addch(bullet_y, bullet_x, "|", curses.color_pair(3) | curses.A_BOLD)
+                        stdscr.addch(
+                            bullet_y,
+                            bullet_x,
+                            bullet["char"],
+                            curses.color_pair(bullet["color"]) | curses.A_BOLD,
+                        )
                     except curses.error:
                         pass
 
             for effect in explosions:
                 age = now - effect["started"]
-                for (effect_x, effect_y), (effect_char, color_pair) in explosion_cells(
-                    effect["x"], effect["y"], age
-                ).items():
-                    if 0 < effect_y < height and 0 < effect_x < width:
+                for (effect_x, effect_y), (effect_char, color_pair) in explosion_cells(effect, age).items():
+                    if 1 < effect_y < height and 0 < effect_x < width:
                         try:
                             stdscr.addch(
                                 effect_y,
@@ -314,15 +573,34 @@ def run_game(stdscr):
                         except curses.error:
                             pass
 
-            for enemy_x, enemy_y in enemies:
-                if 0 < enemy_y < height and 0 < enemy_x < width:
+            for enemy in enemies:
+                enemy_x = enemy["x"]
+                enemy_y = enemy["y"]
+                enemy_type = enemy["type"]
+                if 1 < enemy_y < height and 0 < enemy_x < width:
                     try:
-                        stdscr.addch(enemy_y, enemy_x, "<", curses.color_pair(2) | curses.A_BOLD)
+                        stdscr.addch(
+                            enemy_y,
+                            enemy_x,
+                            enemy_type["shape"],
+                            curses.color_pair(enemy_type["color"]) | curses.A_BOLD,
+                        )
                     except curses.error:
                         pass
 
+                    if enemy["hp"] > 1 and enemy_x + 1 < width:
+                        try:
+                            stdscr.addstr(
+                                enemy_y,
+                                enemy_x + 1,
+                                str(enemy["hp"]),
+                                curses.color_pair(enemy_type["color"]) | curses.A_DIM,
+                            )
+                        except curses.error:
+                            pass
+
             for (ship_x, ship_y), ship_char in ship_cells(player_x, player_y).items():
-                if 0 < ship_y < height and 0 < ship_x < width:
+                if 1 < ship_y < height and 0 < ship_x < width:
                     try:
                         stdscr.addch(ship_y, ship_x, ship_char, curses.color_pair(1) | curses.A_BOLD)
                     except curses.error:
