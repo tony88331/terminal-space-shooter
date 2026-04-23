@@ -7,7 +7,8 @@ A fast, side-scrolling terminal shooter built with Python `curses`.
 - Shooter anchored on the left, enemies fly in from the right
 - Wide, gapless multi-lane firing pattern
 - Real-time enemy speed control
-- Colorized HUD, ship, bullets, and enemies
+- Short-lived splash / explosion burst when shots hit enemies
+- Colorized HUD, ship, bullets, enemies, and hit effects
 - Sound effects for shooting, hits, damage, and game over
 
 ## Controls
@@ -24,5 +25,7 @@ python3 space_shooter.py
 ```
 
 ## Screenshot
+
+Updated preview with the new hit splash effect:
 
 ![Terminal Space Shooter screenshot](screenshot.svg)
