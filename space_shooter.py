@@ -15,6 +15,10 @@ ENEMY_SPAWN_CHANCE = 0.12
 MAX_ENEMIES = 12
 INITIAL_LIVES = 5
 EXPLOSION_DURATION = 0.18
+TREASURE_SPAWN_CHANCE = 0.012
+MAX_TREASURES = 2
+TREASURE_STEP_INTERVAL = 0.15
+STATUS_MESSAGE_DURATION = 1.8
 
 SOUND_FILES = {
     "start": "/System/Library/Sounds/Hero.aiff",
@@ -30,6 +34,7 @@ SOUND_FILES = {
     "destroy_brute": "/System/Library/Sounds/Blow.aiff",
     "damage": "/System/Library/Sounds/Submarine.aiff",
     "game_over": "/System/Library/Sounds/Funk.aiff",
+    "treasure": "/System/Library/Sounds/Hero.aiff",
 }
 
 GUN_TYPES = [
@@ -75,7 +80,13 @@ ENEMY_TYPES = [
     {
         "id": "scout",
         "name": "Scout",
-        "shape": "<",
+        "cells": {
+            (0, 0): ("<", 2),
+            (1, -1): ("<", 2),
+            (1, 0): ("=", 2),
+            (1, 1): ("<", 2),
+            (2, 0): ("<", 2),
+        },
         "color": 2,
         "health": 1,
         "score": 10,
@@ -89,7 +100,13 @@ ENEMY_TYPES = [
     {
         "id": "spinner",
         "name": "Spinner",
-        "shape": "@",
+        "cells": {
+            (0, 0): ("<", 6),
+            (1, -1): ("/", 6),
+            (1, 0): ("O", 3),
+            (1, 1): ("\\", 6),
+            (2, 0): (">", 6),
+        },
         "color": 6,
         "health": 2,
         "score": 20,
@@ -103,7 +120,20 @@ ENEMY_TYPES = [
     {
         "id": "brute",
         "name": "Brute",
-        "shape": "#",
+        "cells": {
+            (0, -1): ("[", 5),
+            (0, 0): ("{", 5),
+            (0, 1): ("[", 5),
+            (1, -1): ("#", 5),
+            (1, 0): ("#", 3),
+            (1, 1): ("#", 5),
+            (2, -1): ("#", 5),
+            (2, 0): ("#", 5),
+            (2, 1): ("#", 5),
+            (3, -1): ("]", 5),
+            (3, 0): (">", 5),
+            (3, 1): ("]", 5),
+        },
         "color": 5,
         "health": 4,
         "score": 40,
@@ -119,8 +149,8 @@ ENEMY_TYPES = [
 EXPLOSION_STYLES = {
     "spark": [
         {"char": "+", "color": 3, "offsets": [(-1, 0), (1, 0), (0, -1), (0, 1)]},
-        {"char": ".", "color": 3, "offsets": [(-1, 0), (1, 0), (0, -1), (0, 1)]},
-        {"char": ".", "color": 2, "offsets": [(0, 0)]},
+        {"char": "*", "color": 3, "offsets": [(-1, -1), (-1, 1), (1, -1), (1, 1)]},
+        {"char": ".", "color": 2, "offsets": [(0, 0), (-2, 0), (2, 0)]},
     ],
     "burst": [
         {
@@ -137,23 +167,47 @@ EXPLOSION_STYLES = {
                 (1, 1),
             ],
         },
-        {"char": "*", "color": 2, "offsets": [(-2, 0), (2, 0), (0, -2), (0, 2)]},
-        {"char": ".", "color": 3, "offsets": [(-2, 0), (2, 0), (0, -1), (0, 1)]},
+        {
+            "char": "+",
+            "color": 2,
+            "offsets": [
+                (-2, 0),
+                (2, 0),
+                (0, -2),
+                (0, 2),
+                (-1, -2),
+                (-1, 2),
+                (1, -2),
+                (1, 2),
+            ],
+        },
+        {
+            "char": ".",
+            "color": 3,
+            "offsets": [
+                (-3, 0),
+                (3, 0),
+                (-2, -1),
+                (-2, 1),
+                (2, -1),
+                (2, 1),
+            ],
+        },
     ],
     "nova": [
         {"char": "o", "color": 6, "offsets": [(-1, 0), (1, 0), (0, -1), (0, 1)]},
-        {"char": "*", "color": 6, "offsets": [(-1, -1), (-1, 1), (1, -1), (1, 1)]},
-        {"char": ".", "color": 3, "offsets": [(-2, 0), (2, 0), (0, -2), (0, 2)]},
+        {"char": "+", "color": 3, "offsets": [(-1, -1), (-1, 1), (1, -1), (1, 1)]},
+        {"char": ".", "color": 6, "offsets": [(-2, 0), (2, 0), (0, -2), (0, 2)]},
     ],
     "chunk": [
-        {"char": "%", "color": 5, "offsets": [(0, 0), (-1, 0), (1, 0)]},
-        {"char": "x", "color": 5, "offsets": [(-1, -1), (-1, 1), (1, -1), (1, 1)]},
+        {"char": "#", "color": 5, "offsets": [(0, 0), (-1, 0), (1, 0)]},
+        {"char": "x", "color": 3, "offsets": [(-1, -1), (-1, 1), (1, -1), (1, 1)]},
         {"char": ".", "color": 2, "offsets": [(-2, 0), (2, 0), (0, -1), (0, 1)]},
     ],
     "shock": [
         {"char": "#", "color": 5, "offsets": [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)]},
         {
-            "char": "*",
+            "char": "+",
             "color": 3,
             "offsets": [
                 (-2, 0),
@@ -168,9 +222,53 @@ EXPLOSION_STYLES = {
         },
         {"char": ".", "color": 2, "offsets": [(-3, 0), (3, 0), (0, -2), (0, 2)]},
     ],
+    "treasure": [
+        {"char": "$", "color": 3, "offsets": [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)]},
+        {"char": "+", "color": 4, "offsets": [(-1, -1), (-1, 1), (1, -1), (1, 1)]},
+        {"char": ".", "color": 3, "offsets": [(-2, 0), (2, 0), (0, -2), (0, 2)]},
+    ],
 }
 
 GUN_BY_KEY = {ord(gun["hotkey"]): index for index, gun in enumerate(GUN_TYPES)}
+
+DIFFICULTY_LEVELS = [
+    {
+        "id": "easy",
+        "name": "Easy",
+        "key": ord("1"),
+        "enemy_spawn_chance": 0.09,
+        "enemy_speed_scale": 0.88,
+        "starting_lives": 6,
+        "treasure_spawn_chance": 0.018,
+        "bonus_life_chance": 0.60,
+        "score_multiplier": 1.0,
+        "description": "6 lives, fewer enemies, more treasure",
+    },
+    {
+        "id": "normal",
+        "name": "Normal",
+        "key": ord("2"),
+        "enemy_spawn_chance": ENEMY_SPAWN_CHANCE,
+        "enemy_speed_scale": 1.0,
+        "starting_lives": INITIAL_LIVES,
+        "treasure_spawn_chance": TREASURE_SPAWN_CHANCE,
+        "bonus_life_chance": 0.45,
+        "score_multiplier": 1.15,
+        "description": "Balanced pace with a small score bonus",
+    },
+    {
+        "id": "hard",
+        "name": "Hard",
+        "key": ord("3"),
+        "enemy_spawn_chance": 0.16,
+        "enemy_speed_scale": 1.18,
+        "starting_lives": 4,
+        "treasure_spawn_chance": 0.008,
+        "bonus_life_chance": 0.28,
+        "score_multiplier": 1.4,
+        "description": "4 lives, faster swarms, rarer treasure",
+    },
+]
 
 
 def clamp(value, low, high):
@@ -182,6 +280,15 @@ def draw_center(stdscr, y, text):
     x = max(0, (width - len(text)) // 2)
     try:
         stdscr.addstr(y, x, text)
+    except curses.error:
+        pass
+
+
+def draw_center_colored(stdscr, y, text, attributes=0):
+    height, width = stdscr.getmaxyx()
+    x = max(0, (width - len(text)) // 2)
+    try:
+        stdscr.addstr(y, x, text, attributes)
     except curses.error:
         pass
 
@@ -214,17 +321,53 @@ class SoundEngine:
 
 def ship_cells(player_x, player_y):
     return {
-        (player_x, player_y - 2): ">",
-        (player_x, player_y - 1): ">",
-        (player_x, player_y): ">",
-        (player_x, player_y + 1): ">",
-        (player_x, player_y + 2): ">",
-        (player_x + 1, player_y - 1): "=",
-        (player_x + 1, player_y): "=",
-        (player_x + 1, player_y + 1): "=",
-        (player_x + 2, player_y - 1): "]",
-        (player_x + 2, player_y): "]",
-        (player_x + 2, player_y + 1): "]",
+        (player_x, player_y - 2): (">", 1),
+        (player_x, player_y - 1): (">", 1),
+        (player_x, player_y): (">", 1),
+        (player_x, player_y + 1): (">", 1),
+        (player_x, player_y + 2): (">", 1),
+        (player_x + 1, player_y - 2): ("/", 1),
+        (player_x + 1, player_y - 1): ("=", 1),
+        (player_x + 1, player_y): ("=", 1),
+        (player_x + 1, player_y + 1): ("=", 1),
+        (player_x + 1, player_y + 2): ("\\", 1),
+        (player_x + 2, player_y - 1): ("[", 1),
+        (player_x + 2, player_y): ("#", 1),
+        (player_x + 2, player_y + 1): ("[", 1),
+        (player_x + 3, player_y - 2): ("}", 1),
+        (player_x + 3, player_y - 1): ("]", 1),
+        (player_x + 3, player_y): ("]", 1),
+        (player_x + 3, player_y + 1): ("]", 1),
+        (player_x + 3, player_y + 2): ("}", 1),
+        (player_x + 4, player_y): ("]", 1),
+    }
+
+
+def enemy_cells(enemy):
+    enemy_type = enemy["type"]
+    cells = enemy_type.get("cells")
+    if cells:
+        return {
+            (enemy["x"] + offset_x, enemy["y"] + offset_y): (char, color)
+            for (offset_x, offset_y), (char, color) in cells.items()
+        }
+
+    return {
+        (enemy["x"], enemy["y"]): (enemy_type["shape"], enemy_type["color"]),
+    }
+
+
+def treasure_cells(treasure):
+    return {
+        (treasure["x"], treasure["y"] - 1): ("+", 3),
+        (treasure["x"] + 1, treasure["y"] - 1): ("-", 3),
+        (treasure["x"] + 2, treasure["y"] - 1): ("+", 3),
+        (treasure["x"], treasure["y"]): ("[", 3),
+        (treasure["x"] + 1, treasure["y"]): ("$", 4),
+        (treasure["x"] + 2, treasure["y"]): ("]", 3),
+        (treasure["x"], treasure["y"] + 1): ("+", 3),
+        (treasure["x"] + 1, treasure["y"] + 1): ("-", 3),
+        (treasure["x"] + 2, treasure["y"] + 1): ("+", 3),
     }
 
 
@@ -250,11 +393,48 @@ def spawn_enemy(width, height):
     }
 
 
-def fire_gun(bullets, player_x, player_y, gun, now):
-    for projectile in gun["projectiles"]:
+def spawn_treasure(width, height):
+    return {
+        "x": max(6, width - 6),
+        "y": random.randint(3, max(3, height - 4)),
+        "move_timer": 0.0,
+        "fall_timer": 0.0,
+        "drift": random.choice((-1, 1)),
+    }
+
+
+def fire_gun(bullets, player_x, player_y, gun, now, power_level):
+    projectiles = list(gun["projectiles"])
+
+    if gun["id"] == "rapid" and power_level >= 1:
+        projectiles.extend(
+            [
+                {"offset_y": -1, "dx": 2, "damage": 1, "char": ".", "color": 3},
+                {"offset_y": 1, "dx": 2, "damage": 1, "char": ".", "color": 3},
+            ]
+        )
+    elif gun["id"] == "spread" and power_level >= 1:
+        projectiles.extend(
+            [
+                {"offset_y": -3, "dx": 1, "damage": 1, "char": "|", "color": 3},
+                {"offset_y": 3, "dx": 1, "damage": 1, "char": "|", "color": 3},
+            ]
+        )
+    elif gun["id"] == "cannon" and power_level >= 1:
+        projectiles = [
+            {
+                **projectile,
+                "damage": projectile["damage"] + power_level,
+                "char": "@",
+                "color": 5,
+            }
+            for projectile in projectiles
+        ]
+
+    for projectile in projectiles:
         bullets.append(
             {
-                "x": player_x + 3,
+                "x": player_x + 5,
                 "y": player_y + projectile["offset_y"],
                 "dx": projectile["dx"],
                 "damage": projectile["damage"],
@@ -275,6 +455,18 @@ def make_explosion(x, y, style, duration_multiplier=1.0):
     }
 
 
+def set_status_message(message, now):
+    return {"text": message, "expires": now + STATUS_MESSAGE_DURATION}
+
+
+def award_treasure(lives, power_level, difficulty):
+    if random.random() < difficulty["bonus_life_chance"]:
+        return lives + 1, power_level, "VIGOR UP +1 life"
+    if power_level < 2:
+        return lives, power_level + 1, f"POWER UP Lv{power_level + 2}"
+    return lives + 1, power_level, "BONUS VIGOR +1 life"
+
+
 def explosion_cells(effect, age):
     style = EXPLOSION_STYLES.get(effect["style"], EXPLOSION_STYLES["spark"])
     if effect["duration"] <= 0:
@@ -293,19 +485,49 @@ def explosion_cells(effect, age):
 
 
 def start_screen(stdscr):
-    stdscr.clear()
-    draw_center(stdscr, 2, "=== TERMINAL SPACE SHOOTER ===")
-    draw_center(stdscr, 4, "Move: W/S or Up/Down")
-    draw_center(stdscr, 5, "Shoot: Space")
-    draw_center(stdscr, 6, "Switch guns: Left/Right arrows")
-    draw_center(stdscr, 7, "Enemy speed: - slower   + faster")
-    draw_center(stdscr, 8, "Pause: P    Quit: Q")
-    draw_center(stdscr, 10, "Enemies: < Scout (1 HP / 10)   @ Spinner (2 HP / 20)   # Brute (4 HP / 40)")
-    draw_center(stdscr, 12, "Press any key to start")
-    stdscr.refresh()
+    selected_index = 1
     stdscr.nodelay(False)
-    stdscr.getch()
-    stdscr.nodelay(True)
+
+    while True:
+        stdscr.clear()
+        draw_center(stdscr, 2, "=== TERMINAL SPACE SHOOTER ===")
+        draw_center(stdscr, 4, "Move: W/S or Up/Down")
+        draw_center(stdscr, 5, "Shoot: Space")
+        draw_center(stdscr, 6, "Switch guns: Left/Right arrows")
+        draw_center(stdscr, 7, "Enemy speed: - slower   + faster")
+        draw_center(stdscr, 8, "Pause: P    Quit: Q")
+        draw_center(stdscr, 10, "Enemies: scout dart   spinner core   brute block")
+        draw_center(stdscr, 11, "Treasure: shoot loot crates for Vigor or Power")
+        draw_center(stdscr, 12, "Choose difficulty:")
+
+        for index, difficulty in enumerate(DIFFICULTY_LEVELS):
+            prefix = ">" if index == selected_index else " "
+            line = (
+                f"{prefix} {index + 1}. {difficulty['name']}  "
+                f"x{difficulty['score_multiplier']:.2f} score  "
+                f"{difficulty['description']}"
+            )
+            attributes = curses.color_pair(3) | curses.A_BOLD if index == selected_index else curses.A_DIM
+            draw_center_colored(stdscr, 14 + index, line, attributes)
+
+        draw_center(stdscr, 17, "Use Up/Down or 1-3, then press Enter")
+        stdscr.refresh()
+
+        key = stdscr.getch()
+        if key in (ord("q"), ord("Q")):
+            return None
+        if key in (curses.KEY_UP, ord("w"), ord("W")):
+            selected_index = (selected_index - 1) % len(DIFFICULTY_LEVELS)
+        elif key in (curses.KEY_DOWN, ord("s"), ord("S")):
+            selected_index = (selected_index + 1) % len(DIFFICULTY_LEVELS)
+        elif key in (curses.KEY_ENTER, 10, 13, ord(" ")):
+            stdscr.nodelay(True)
+            return DIFFICULTY_LEVELS[selected_index]
+        else:
+            for index, difficulty in enumerate(DIFFICULTY_LEVELS):
+                if key == difficulty["key"]:
+                    stdscr.nodelay(True)
+                    return difficulty
 
 
 def game_over_screen(stdscr, score):
@@ -371,7 +593,9 @@ def run_game(stdscr):
             time.sleep(0.05)
             continue
 
-        start_screen(stdscr)
+        difficulty = start_screen(stdscr)
+        if difficulty is None:
+            return
         sound.play("start", min_interval=0.3)
 
         player_x = 2
@@ -379,9 +603,12 @@ def run_game(stdscr):
         gun_index = 1
         bullets = []
         enemies = []
+        treasures = []
         explosions = []
         score = 0
-        lives = INITIAL_LIVES
+        lives = difficulty["starting_lives"]
+        power_level = 0
+        status_message = None
         last_shot_time = 0.0
         enemy_step_interval = ENEMY_STEP_INTERVAL
         last_frame_time = time.time()
@@ -429,14 +656,16 @@ def run_game(stdscr):
                 gun = GUN_TYPES[gun_index]
             elif key == ord(" "):
                 if now - last_shot_time >= gun["cooldown"]:
-                    fire_gun(bullets, player_x, player_y, gun, now)
+                    fire_gun(bullets, player_x, player_y, gun, now, power_level)
                     last_shot_time = now
                     sound.play(gun["sound"], min_interval=0.03)
 
             player_y = clamp(player_y, 3, max(3, height - 4))
 
-            if len(enemies) < MAX_ENEMIES and random.random() < ENEMY_SPAWN_CHANCE:
+            if len(enemies) < MAX_ENEMIES and random.random() < difficulty["enemy_spawn_chance"]:
                 enemies.append(spawn_enemy(width, height))
+            if len(treasures) < MAX_TREASURES and random.random() < difficulty["treasure_spawn_chance"]:
+                treasures.append(spawn_treasure(width, height))
 
             for bullet in bullets:
                 bullet["x"] += bullet["dx"]
@@ -444,22 +673,40 @@ def run_game(stdscr):
 
             for enemy in enemies:
                 enemy["move_timer"] += delta
-                move_threshold = max(MIN_ENEMY_STEP_INTERVAL / 2, enemy_step_interval / enemy["type"]["speed"])
+                move_threshold = max(
+                    MIN_ENEMY_STEP_INTERVAL / 2,
+                    enemy_step_interval
+                    / (enemy["type"]["speed"] * difficulty["enemy_speed_scale"]),
+                )
                 if enemy["move_timer"] >= move_threshold:
                     enemy["x"] -= 1
                     enemy["move_timer"] = 0.0
 
+            for treasure in treasures:
+                treasure["move_timer"] += delta
+                treasure["fall_timer"] += delta
+                if treasure["move_timer"] >= TREASURE_STEP_INTERVAL:
+                    treasure["x"] -= 1
+                    treasure["move_timer"] = 0.0
+                if treasure["fall_timer"] >= TREASURE_STEP_INTERVAL * 1.5:
+                    treasure["y"] += treasure["drift"]
+                    if treasure["y"] <= 3 or treasure["y"] >= height - 4:
+                        treasure["drift"] *= -1
+                        treasure["y"] = clamp(treasure["y"], 3, max(3, height - 4))
+                    treasure["fall_timer"] = 0.0
+
             bullets_to_remove = set()
             destroyed_enemy_ids = set()
+            destroyed_treasure_ids = set()
             for bullet_index, bullet in enumerate(bullets):
                 for enemy in enemies:
-                    if enemy["x"] == bullet["x"] and enemy["y"] == bullet["y"]:
+                    if (bullet["x"], bullet["y"]) in enemy_cells(enemy):
                         bullets_to_remove.add(bullet_index)
                         enemy["hp"] -= bullet["damage"]
                         enemy_type = enemy["type"]
                         if enemy["hp"] <= 0:
                             destroyed_enemy_ids.add(id(enemy))
-                            score += enemy_type["score"]
+                            score += int(enemy_type["score"] * difficulty["score_multiplier"])
                             explosions.append(
                                 make_explosion(
                                     enemy["x"],
@@ -480,32 +727,60 @@ def run_game(stdscr):
                             )
                             sound.play(enemy_type["hit_sound"], min_interval=0.03)
                         break
+                else:
+                    for treasure in treasures:
+                        if (bullet["x"], bullet["y"]) in treasure_cells(treasure):
+                            bullets_to_remove.add(bullet_index)
+                            destroyed_treasure_ids.add(id(treasure))
+                            lives, power_level, reward_text = award_treasure(
+                                lives, power_level, difficulty
+                            )
+                            explosions.append(
+                                make_explosion(
+                                    treasure["x"] + 1,
+                                    treasure["y"],
+                                    "treasure",
+                                    duration_multiplier=1.1,
+                                )
+                            )
+                            status_message = set_status_message(reward_text, now)
+                            sound.play("treasure", min_interval=0.05)
+                            break
 
             bullets = [
                 bullet for index, bullet in enumerate(bullets) if index not in bullets_to_remove
             ]
             enemies = [enemy for enemy in enemies if id(enemy) not in destroyed_enemy_ids]
+            treasures = [treasure for treasure in treasures if id(treasure) not in destroyed_treasure_ids]
 
             explosions = [
                 effect
                 for effect in explosions
                 if now - effect["started"] < effect["duration"]
             ]
+            if status_message and now >= status_message["expires"]:
+                status_message = None
 
             filtered_enemies = []
             took_damage = False
             for enemy in enemies:
-                if enemy["x"] <= player_x:
+                if any(cell_x <= player_x for cell_x, _ in enemy_cells(enemy)):
                     lives -= 1
                     took_damage = True
                 else:
                     filtered_enemies.append(enemy)
             enemies = filtered_enemies
 
+            treasures = [
+                treasure
+                for treasure in treasures
+                if all(cell_x > 0 for cell_x, _ in treasure_cells(treasure))
+            ]
+
             ship_hit_cells = set(ship_cells(player_x, player_y).keys())
             remaining_enemies = []
             for enemy in enemies:
-                if (enemy["x"], enemy["y"]) in ship_hit_cells:
+                if ship_hit_cells.intersection(enemy_cells(enemy).keys()):
                     lives -= 1
                     took_damage = True
                     explosions.append(
@@ -531,7 +806,9 @@ def run_game(stdscr):
                 * 100
             )
             hud = (
-                f" Score: {score}   Lives: {lives}   Gun: {gun['name']} [Left/Right]"
+                f" Score: {score}   Lives: {lives}   Power: {power_level + 1}"
+                f"   Difficulty: {difficulty['name']} x{difficulty['score_multiplier']:.2f}"
+                f"   Gun: {gun['name']} [Left/Right]"
                 f"   Enemy speed: {enemy_speed_percent}% [+/-]   P: Pause   Q: Quit "
             )
             try:
@@ -539,11 +816,21 @@ def run_game(stdscr):
             except curses.error:
                 pass
 
-            gun_line = " Guns: Left/Right cycle   Rapid (fast)   Spread (wide)   Cannon (heavy) "
+            gun_line = " Guns: Left/Right cycle   Rapid   Spread   Cannon   Shoot [$] crates for Vigor/Power "
             try:
                 stdscr.addstr(1, 0, gun_line[: max(0, width - 1)], curses.color_pair(1) | curses.A_BOLD)
             except curses.error:
                 pass
+            if status_message:
+                try:
+                    stdscr.addstr(
+                        2,
+                        0,
+                        f" Loot: {status_message['text']} "[: max(0, width - 1)],
+                        curses.color_pair(3) | curses.A_BOLD,
+                    )
+                except curses.error:
+                    pass
 
             for bullet in bullets:
                 bullet_x = bullet["x"]
@@ -573,20 +860,35 @@ def run_game(stdscr):
                         except curses.error:
                             pass
 
+            for treasure in treasures:
+                for (cell_x, cell_y), (cell_char, color_pair) in treasure_cells(treasure).items():
+                    if 2 < cell_y < height and 0 < cell_x < width:
+                        try:
+                            stdscr.addch(
+                                cell_y,
+                                cell_x,
+                                cell_char,
+                                curses.color_pair(color_pair) | curses.A_BOLD,
+                            )
+                        except curses.error:
+                            pass
+
             for enemy in enemies:
                 enemy_x = enemy["x"]
                 enemy_y = enemy["y"]
                 enemy_type = enemy["type"]
                 if 1 < enemy_y < height and 0 < enemy_x < width:
-                    try:
-                        stdscr.addch(
-                            enemy_y,
-                            enemy_x,
-                            enemy_type["shape"],
-                            curses.color_pair(enemy_type["color"]) | curses.A_BOLD,
-                        )
-                    except curses.error:
-                        pass
+                    for (cell_x, cell_y), (cell_char, color_pair) in enemy_cells(enemy).items():
+                        if 1 < cell_y < height and 0 < cell_x < width:
+                            try:
+                                stdscr.addch(
+                                    cell_y,
+                                    cell_x,
+                                    cell_char,
+                                    curses.color_pair(color_pair) | curses.A_BOLD,
+                                )
+                            except curses.error:
+                                pass
 
                     if enemy["hp"] > 1 and enemy_x + 1 < width:
                         try:
@@ -599,10 +901,15 @@ def run_game(stdscr):
                         except curses.error:
                             pass
 
-            for (ship_x, ship_y), ship_char in ship_cells(player_x, player_y).items():
+            for (ship_x, ship_y), (ship_char, color_pair) in ship_cells(player_x, player_y).items():
                 if 1 < ship_y < height and 0 < ship_x < width:
                     try:
-                        stdscr.addch(ship_y, ship_x, ship_char, curses.color_pair(1) | curses.A_BOLD)
+                        stdscr.addch(
+                            ship_y,
+                            ship_x,
+                            ship_char,
+                            curses.color_pair(color_pair) | curses.A_BOLD,
+                        )
                     except curses.error:
                         pass
 
