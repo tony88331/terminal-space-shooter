@@ -231,6 +231,45 @@ EXPLOSION_STYLES = {
 
 GUN_BY_KEY = {ord(gun["hotkey"]): index for index, gun in enumerate(GUN_TYPES)}
 
+DIFFICULTY_LEVELS = [
+    {
+        "id": "easy",
+        "name": "Easy",
+        "key": ord("1"),
+        "enemy_spawn_chance": 0.09,
+        "enemy_speed_scale": 0.88,
+        "starting_lives": 6,
+        "treasure_spawn_chance": 0.018,
+        "bonus_life_chance": 0.60,
+        "score_multiplier": 1.0,
+        "description": "6 lives, fewer enemies, more treasure",
+    },
+    {
+        "id": "normal",
+        "name": "Normal",
+        "key": ord("2"),
+        "enemy_spawn_chance": ENEMY_SPAWN_CHANCE,
+        "enemy_speed_scale": 1.0,
+        "starting_lives": INITIAL_LIVES,
+        "treasure_spawn_chance": TREASURE_SPAWN_CHANCE,
+        "bonus_life_chance": 0.45,
+        "score_multiplier": 1.15,
+        "description": "Balanced pace with a small score bonus",
+    },
+    {
+        "id": "hard",
+        "name": "Hard",
+        "key": ord("3"),
+        "enemy_spawn_chance": 0.16,
+        "enemy_speed_scale": 1.18,
+        "starting_lives": 4,
+        "treasure_spawn_chance": 0.008,
+        "bonus_life_chance": 0.28,
+        "score_multiplier": 1.4,
+        "description": "4 lives, faster swarms, rarer treasure",
+    },
+]
+
 
 def clamp(value, low, high):
     return max(low, min(high, value))
@@ -241,6 +280,15 @@ def draw_center(stdscr, y, text):
     x = max(0, (width - len(text)) // 2)
     try:
         stdscr.addstr(y, x, text)
+    except curses.error:
+        pass
+
+
+def draw_center_colored(stdscr, y, text, attributes=0):
+    height, width = stdscr.getmaxyx()
+    x = max(0, (width - len(text)) // 2)
+    try:
+        stdscr.addstr(y, x, text, attributes)
     except curses.error:
         pass
 
@@ -411,8 +459,8 @@ def set_status_message(message, now):
     return {"text": message, "expires": now + STATUS_MESSAGE_DURATION}
 
 
-def award_treasure(lives, power_level):
-    if random.random() < 0.45:
+def award_treasure(lives, power_level, difficulty):
+    if random.random() < difficulty["bonus_life_chance"]:
         return lives + 1, power_level, "VIGOR UP +1 life"
     if power_level < 2:
         return lives, power_level + 1, f"POWER UP Lv{power_level + 2}"
@@ -437,20 +485,49 @@ def explosion_cells(effect, age):
 
 
 def start_screen(stdscr):
-    stdscr.clear()
-    draw_center(stdscr, 2, "=== TERMINAL SPACE SHOOTER ===")
-    draw_center(stdscr, 4, "Move: W/S or Up/Down")
-    draw_center(stdscr, 5, "Shoot: Space")
-    draw_center(stdscr, 6, "Switch guns: Left/Right arrows")
-    draw_center(stdscr, 7, "Enemy speed: - slower   + faster")
-    draw_center(stdscr, 8, "Pause: P    Quit: Q")
-    draw_center(stdscr, 10, "Enemies: scout dart   spinner core   brute block")
-    draw_center(stdscr, 11, "Treasure: shoot loot crates for Vigor or Power")
-    draw_center(stdscr, 13, "Press any key to start")
-    stdscr.refresh()
+    selected_index = 1
     stdscr.nodelay(False)
-    stdscr.getch()
-    stdscr.nodelay(True)
+
+    while True:
+        stdscr.clear()
+        draw_center(stdscr, 2, "=== TERMINAL SPACE SHOOTER ===")
+        draw_center(stdscr, 4, "Move: W/S or Up/Down")
+        draw_center(stdscr, 5, "Shoot: Space")
+        draw_center(stdscr, 6, "Switch guns: Left/Right arrows")
+        draw_center(stdscr, 7, "Enemy speed: - slower   + faster")
+        draw_center(stdscr, 8, "Pause: P    Quit: Q")
+        draw_center(stdscr, 10, "Enemies: scout dart   spinner core   brute block")
+        draw_center(stdscr, 11, "Treasure: shoot loot crates for Vigor or Power")
+        draw_center(stdscr, 12, "Choose difficulty:")
+
+        for index, difficulty in enumerate(DIFFICULTY_LEVELS):
+            prefix = ">" if index == selected_index else " "
+            line = (
+                f"{prefix} {index + 1}. {difficulty['name']}  "
+                f"x{difficulty['score_multiplier']:.2f} score  "
+                f"{difficulty['description']}"
+            )
+            attributes = curses.color_pair(3) | curses.A_BOLD if index == selected_index else curses.A_DIM
+            draw_center_colored(stdscr, 14 + index, line, attributes)
+
+        draw_center(stdscr, 17, "Use Up/Down or 1-3, then press Enter")
+        stdscr.refresh()
+
+        key = stdscr.getch()
+        if key in (ord("q"), ord("Q")):
+            return None
+        if key in (curses.KEY_UP, ord("w"), ord("W")):
+            selected_index = (selected_index - 1) % len(DIFFICULTY_LEVELS)
+        elif key in (curses.KEY_DOWN, ord("s"), ord("S")):
+            selected_index = (selected_index + 1) % len(DIFFICULTY_LEVELS)
+        elif key in (curses.KEY_ENTER, 10, 13, ord(" ")):
+            stdscr.nodelay(True)
+            return DIFFICULTY_LEVELS[selected_index]
+        else:
+            for index, difficulty in enumerate(DIFFICULTY_LEVELS):
+                if key == difficulty["key"]:
+                    stdscr.nodelay(True)
+                    return difficulty
 
 
 def game_over_screen(stdscr, score):
@@ -516,7 +593,9 @@ def run_game(stdscr):
             time.sleep(0.05)
             continue
 
-        start_screen(stdscr)
+        difficulty = start_screen(stdscr)
+        if difficulty is None:
+            return
         sound.play("start", min_interval=0.3)
 
         player_x = 2
@@ -527,7 +606,7 @@ def run_game(stdscr):
         treasures = []
         explosions = []
         score = 0
-        lives = INITIAL_LIVES
+        lives = difficulty["starting_lives"]
         power_level = 0
         status_message = None
         last_shot_time = 0.0
@@ -583,9 +662,9 @@ def run_game(stdscr):
 
             player_y = clamp(player_y, 3, max(3, height - 4))
 
-            if len(enemies) < MAX_ENEMIES and random.random() < ENEMY_SPAWN_CHANCE:
+            if len(enemies) < MAX_ENEMIES and random.random() < difficulty["enemy_spawn_chance"]:
                 enemies.append(spawn_enemy(width, height))
-            if len(treasures) < MAX_TREASURES and random.random() < TREASURE_SPAWN_CHANCE:
+            if len(treasures) < MAX_TREASURES and random.random() < difficulty["treasure_spawn_chance"]:
                 treasures.append(spawn_treasure(width, height))
 
             for bullet in bullets:
@@ -594,7 +673,11 @@ def run_game(stdscr):
 
             for enemy in enemies:
                 enemy["move_timer"] += delta
-                move_threshold = max(MIN_ENEMY_STEP_INTERVAL / 2, enemy_step_interval / enemy["type"]["speed"])
+                move_threshold = max(
+                    MIN_ENEMY_STEP_INTERVAL / 2,
+                    enemy_step_interval
+                    / (enemy["type"]["speed"] * difficulty["enemy_speed_scale"]),
+                )
                 if enemy["move_timer"] >= move_threshold:
                     enemy["x"] -= 1
                     enemy["move_timer"] = 0.0
@@ -623,7 +706,7 @@ def run_game(stdscr):
                         enemy_type = enemy["type"]
                         if enemy["hp"] <= 0:
                             destroyed_enemy_ids.add(id(enemy))
-                            score += enemy_type["score"]
+                            score += int(enemy_type["score"] * difficulty["score_multiplier"])
                             explosions.append(
                                 make_explosion(
                                     enemy["x"],
@@ -649,7 +732,9 @@ def run_game(stdscr):
                         if (bullet["x"], bullet["y"]) in treasure_cells(treasure):
                             bullets_to_remove.add(bullet_index)
                             destroyed_treasure_ids.add(id(treasure))
-                            lives, power_level, reward_text = award_treasure(lives, power_level)
+                            lives, power_level, reward_text = award_treasure(
+                                lives, power_level, difficulty
+                            )
                             explosions.append(
                                 make_explosion(
                                     treasure["x"] + 1,
@@ -721,7 +806,9 @@ def run_game(stdscr):
                 * 100
             )
             hud = (
-                f" Score: {score}   Lives: {lives}   Power: {power_level + 1}   Gun: {gun['name']} [Left/Right]"
+                f" Score: {score}   Lives: {lives}   Power: {power_level + 1}"
+                f"   Difficulty: {difficulty['name']} x{difficulty['score_multiplier']:.2f}"
+                f"   Gun: {gun['name']} [Left/Right]"
                 f"   Enemy speed: {enemy_speed_percent}% [+/-]   P: Pause   Q: Quit "
             )
             try:
