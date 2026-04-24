@@ -76,6 +76,11 @@ ENEMY_TYPES = [
         "id": "scout",
         "name": "Scout",
         "shape": "<",
+        "cells": {
+            (0, 0): ("<", 2),
+            (1, -1): ("<", 2),
+            (1, 1): ("<", 2),
+        },
         "color": 2,
         "health": 1,
         "score": 10,
@@ -124,7 +129,7 @@ EXPLOSION_STYLES = {
     ],
     "burst": [
         {
-            "char": "*",
+            "char": "+",
             "color": 3,
             "offsets": [
                 (-1, 0),
@@ -137,8 +142,32 @@ EXPLOSION_STYLES = {
                 (1, 1),
             ],
         },
-        {"char": "*", "color": 2, "offsets": [(-2, 0), (2, 0), (0, -2), (0, 2)]},
-        {"char": ".", "color": 3, "offsets": [(-2, 0), (2, 0), (0, -1), (0, 1)]},
+        {
+            "char": "*",
+            "color": 2,
+            "offsets": [
+                (-2, 0),
+                (2, 0),
+                (0, -2),
+                (0, 2),
+                (-1, -2),
+                (-1, 2),
+                (1, -2),
+                (1, 2),
+            ],
+        },
+        {
+            "char": ".",
+            "color": 3,
+            "offsets": [
+                (-2, -1),
+                (-2, 1),
+                (2, -1),
+                (2, 1),
+                (-3, 0),
+                (3, 0),
+            ],
+        },
     ],
     "nova": [
         {"char": "o", "color": 6, "offsets": [(-1, 0), (1, 0), (0, -1), (0, 1)]},
@@ -214,17 +243,36 @@ class SoundEngine:
 
 def ship_cells(player_x, player_y):
     return {
-        (player_x, player_y - 2): ">",
-        (player_x, player_y - 1): ">",
-        (player_x, player_y): ">",
-        (player_x, player_y + 1): ">",
-        (player_x, player_y + 2): ">",
-        (player_x + 1, player_y - 1): "=",
-        (player_x + 1, player_y): "=",
-        (player_x + 1, player_y + 1): "=",
-        (player_x + 2, player_y - 1): "]",
-        (player_x + 2, player_y): "]",
-        (player_x + 2, player_y + 1): "]",
+        (player_x, player_y - 2): (">", 1),
+        (player_x, player_y - 1): (">", 1),
+        (player_x, player_y): (">", 1),
+        (player_x, player_y + 1): (">", 1),
+        (player_x, player_y + 2): (">", 1),
+        (player_x + 1, player_y - 1): ("=", 1),
+        (player_x + 1, player_y): ("=", 1),
+        (player_x + 1, player_y + 1): ("=", 1),
+        (player_x + 2, player_y - 1): ("=", 1),
+        (player_x + 2, player_y): ("=", 1),
+        (player_x + 2, player_y + 1): ("=", 1),
+        (player_x + 3, player_y - 2): ("]", 1),
+        (player_x + 3, player_y - 1): ("]", 1),
+        (player_x + 3, player_y): ("]", 1),
+        (player_x + 3, player_y + 1): ("]", 1),
+        (player_x + 3, player_y + 2): ("]", 1),
+    }
+
+
+def enemy_cells(enemy):
+    enemy_type = enemy["type"]
+    cells = enemy_type.get("cells")
+    if cells:
+        return {
+            (enemy["x"] + offset_x, enemy["y"] + offset_y): (char, color)
+            for (offset_x, offset_y), (char, color) in cells.items()
+        }
+
+    return {
+        (enemy["x"], enemy["y"]): (enemy_type["shape"], enemy_type["color"]),
     }
 
 
@@ -254,7 +302,7 @@ def fire_gun(bullets, player_x, player_y, gun, now):
     for projectile in gun["projectiles"]:
         bullets.append(
             {
-                "x": player_x + 3,
+                "x": player_x + 4,
                 "y": player_y + projectile["offset_y"],
                 "dx": projectile["dx"],
                 "damage": projectile["damage"],
@@ -300,7 +348,7 @@ def start_screen(stdscr):
     draw_center(stdscr, 6, "Switch guns: Left/Right arrows")
     draw_center(stdscr, 7, "Enemy speed: - slower   + faster")
     draw_center(stdscr, 8, "Pause: P    Quit: Q")
-    draw_center(stdscr, 10, "Enemies: < Scout (1 HP / 10)   @ Spinner (2 HP / 20)   # Brute (4 HP / 40)")
+    draw_center(stdscr, 10, "Enemies: <<< Scout (1 HP / 10)   @ Spinner (2 HP / 20)   # Brute (4 HP / 40)")
     draw_center(stdscr, 12, "Press any key to start")
     stdscr.refresh()
     stdscr.nodelay(False)
@@ -578,15 +626,17 @@ def run_game(stdscr):
                 enemy_y = enemy["y"]
                 enemy_type = enemy["type"]
                 if 1 < enemy_y < height and 0 < enemy_x < width:
-                    try:
-                        stdscr.addch(
-                            enemy_y,
-                            enemy_x,
-                            enemy_type["shape"],
-                            curses.color_pair(enemy_type["color"]) | curses.A_BOLD,
-                        )
-                    except curses.error:
-                        pass
+                    for (cell_x, cell_y), (cell_char, color_pair) in enemy_cells(enemy).items():
+                        if 1 < cell_y < height and 0 < cell_x < width:
+                            try:
+                                stdscr.addch(
+                                    cell_y,
+                                    cell_x,
+                                    cell_char,
+                                    curses.color_pair(color_pair) | curses.A_BOLD,
+                                )
+                            except curses.error:
+                                pass
 
                     if enemy["hp"] > 1 and enemy_x + 1 < width:
                         try:
@@ -599,10 +649,15 @@ def run_game(stdscr):
                         except curses.error:
                             pass
 
-            for (ship_x, ship_y), ship_char in ship_cells(player_x, player_y).items():
+            for (ship_x, ship_y), (ship_char, color_pair) in ship_cells(player_x, player_y).items():
                 if 1 < ship_y < height and 0 < ship_x < width:
                     try:
-                        stdscr.addch(ship_y, ship_x, ship_char, curses.color_pair(1) | curses.A_BOLD)
+                        stdscr.addch(
+                            ship_y,
+                            ship_x,
+                            ship_char,
+                            curses.color_pair(color_pair) | curses.A_BOLD,
+                        )
                     except curses.error:
                         pass
 
