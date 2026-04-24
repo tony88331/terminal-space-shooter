@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import curses
+import json
+import os
 import random
 import shutil
 import subprocess
@@ -19,6 +21,14 @@ TREASURE_SPAWN_CHANCE = 0.012
 MAX_TREASURES = 2
 TREASURE_STEP_INTERVAL = 0.15
 STATUS_MESSAGE_DURATION = 1.8
+SHIELD_DURATION = 1.2
+SHIELD_COOLDOWN = 7.0
+MAX_ENEMY_BULLETS = 28
+BOOST_DURATION = 5.0
+BOOST_POWER_MULTIPLIER = 2.0
+BOSS_SCORE_STEP = 300
+HIGH_SCORE_LIMIT = 10
+HIGH_SCORE_FILE = os.path.join(os.path.dirname(__file__), "high_scores.json")
 
 SOUND_FILES = {
     "start": "/System/Library/Sounds/Hero.aiff",
@@ -35,6 +45,8 @@ SOUND_FILES = {
     "damage": "/System/Library/Sounds/Submarine.aiff",
     "game_over": "/System/Library/Sounds/Funk.aiff",
     "treasure": "/System/Library/Sounds/Hero.aiff",
+    "shield_up": "/System/Library/Sounds/Blow.aiff",
+    "shield_block": "/System/Library/Sounds/Tink.aiff",
 }
 
 GUN_TYPES = [
@@ -96,6 +108,8 @@ ENEMY_TYPES = [
         "destroy_sound": "destroy_scout",
         "hit_effect": "spark",
         "destroy_effect": "burst",
+        "fire_cooldown": 1.9,
+        "shot": {"char": ":", "color": 2, "damage": 1, "speed": 1},
     },
     {
         "id": "spinner",
@@ -116,6 +130,8 @@ ENEMY_TYPES = [
         "destroy_sound": "destroy_spinner",
         "hit_effect": "nova",
         "destroy_effect": "nova",
+        "fire_cooldown": 1.45,
+        "shot": {"char": "*", "color": 6, "damage": 1, "speed": 1},
     },
     {
         "id": "brute",
@@ -143,8 +159,52 @@ ENEMY_TYPES = [
         "destroy_sound": "destroy_brute",
         "hit_effect": "chunk",
         "destroy_effect": "shock",
+        "fire_cooldown": 2.4,
+        "shot": {"char": "o", "color": 5, "damage": 2, "speed": 1},
     },
 ]
+
+BOSS_TYPE = {
+    "id": "boss",
+    "name": "Dreadnought",
+    "cells": {
+        (0, -2): ("[", 5),
+        (0, -1): ("[", 5),
+        (0, 0): ("<", 5),
+        (0, 1): ("[", 5),
+        (0, 2): ("[", 5),
+        (1, -2): ("#", 5),
+        (1, -1): ("#", 5),
+        (1, 0): ("#", 3),
+        (1, 1): ("#", 5),
+        (1, 2): ("#", 5),
+        (2, -2): ("#", 5),
+        (2, -1): ("#", 5),
+        (2, 0): ("O", 3),
+        (2, 1): ("#", 5),
+        (2, 2): ("#", 5),
+        (3, -2): ("#", 5),
+        (3, -1): ("#", 5),
+        (3, 0): ("#", 3),
+        (3, 1): ("#", 5),
+        (3, 2): ("#", 5),
+        (4, -2): ("]", 5),
+        (4, -1): ("]", 5),
+        (4, 0): (">", 5),
+        (4, 1): ("]", 5),
+        (4, 2): ("]", 5),
+    },
+    "color": 5,
+    "health": 26,
+    "score": 260,
+    "speed": 0.55,
+    "hit_sound": "hit_brute",
+    "destroy_sound": "destroy_brute",
+    "hit_effect": "shock",
+    "destroy_effect": "shock",
+    "fire_cooldown": 0.85,
+    "shot": {"char": "~", "color": 5, "damage": 2, "speed": 1},
+}
 
 EXPLOSION_STYLES = {
     "spark": [
@@ -293,6 +353,62 @@ def draw_center_colored(stdscr, y, text, attributes=0):
         pass
 
 
+def load_high_scores():
+    try:
+        with open(HIGH_SCORE_FILE, "r", encoding="utf-8") as file:
+            scores = json.load(file)
+    except (OSError, json.JSONDecodeError):
+        return []
+
+    if not isinstance(scores, list):
+        return []
+
+    cleaned = []
+    for entry in scores:
+        if not isinstance(entry, dict):
+            continue
+        score = entry.get("score")
+        difficulty = entry.get("difficulty", "Unknown")
+        timestamp = entry.get("timestamp", "-")
+        if isinstance(score, int):
+            cleaned.append(
+                {
+                    "score": score,
+                    "difficulty": str(difficulty),
+                    "timestamp": str(timestamp),
+                }
+            )
+
+    cleaned.sort(key=lambda item: item["score"], reverse=True)
+    return cleaned[:HIGH_SCORE_LIMIT]
+
+
+def save_high_scores(scores):
+    trimmed = scores[:HIGH_SCORE_LIMIT]
+    with open(HIGH_SCORE_FILE, "w", encoding="utf-8") as file:
+        json.dump(trimmed, file, indent=2)
+
+
+def record_high_score(scores, score, difficulty_name):
+    entry = {
+        "score": score,
+        "difficulty": difficulty_name,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M"),
+    }
+    scores.append(entry)
+    scores.sort(key=lambda item: item["score"], reverse=True)
+    rank = scores.index(entry) + 1
+    scores = scores[:HIGH_SCORE_LIMIT]
+    try:
+        save_high_scores(scores)
+    except OSError:
+        pass
+
+    if rank > HIGH_SCORE_LIMIT:
+        rank = None
+    return scores, rank
+
+
 class SoundEngine:
     def __init__(self):
         self.afplay_available = shutil.which("afplay") is not None
@@ -319,8 +435,8 @@ class SoundEngine:
         curses.beep()
 
 
-def ship_cells(player_x, player_y):
-    return {
+def ship_cells(player_x, player_y, boosted=False):
+    cells = {
         (player_x, player_y - 2): (">", 1),
         (player_x, player_y - 1): (">", 1),
         (player_x, player_y): (">", 1),
@@ -341,6 +457,27 @@ def ship_cells(player_x, player_y):
         (player_x + 3, player_y + 2): ("}", 1),
         (player_x + 4, player_y): ("]", 1),
     }
+
+    if boosted:
+        cells.update(
+            {
+                (player_x - 1, player_y - 3): ("+", 3),
+                (player_x - 1, player_y + 3): ("+", 3),
+                (player_x, player_y - 3): (">", 3),
+                (player_x, player_y + 3): (">", 3),
+                (player_x + 1, player_y - 3): ("/", 3),
+                (player_x + 1, player_y + 3): ("\\", 3),
+                (player_x + 2, player_y - 3): ("[", 3),
+                (player_x + 2, player_y + 3): ("[", 3),
+                (player_x + 3, player_y - 3): ("}", 3),
+                (player_x + 3, player_y + 3): ("}", 3),
+                (player_x + 4, player_y - 1): ("]", 3),
+                (player_x + 4, player_y + 1): ("]", 3),
+                (player_x + 5, player_y): ("]", 3),
+            }
+        )
+
+    return cells
 
 
 def enemy_cells(enemy):
@@ -390,6 +527,21 @@ def spawn_enemy(width, height):
         "type": enemy_type,
         "hp": enemy_type["health"],
         "move_timer": 0.0,
+        "fire_timer": random.uniform(0.0, enemy_type["fire_cooldown"] * 0.6),
+    }
+
+
+def spawn_boss(width, height):
+    center_y = random.randint(6, max(6, height - 7))
+    return {
+        "x": max(6, width - 9),
+        "y": center_y,
+        "type": BOSS_TYPE,
+        "hp": BOSS_TYPE["health"],
+        "move_timer": 0.0,
+        "fire_timer": random.uniform(0.0, BOSS_TYPE["fire_cooldown"] * 0.6),
+        "drift": random.choice((-1, 1)),
+        "drift_timer": 0.0,
     }
 
 
@@ -403,7 +555,20 @@ def spawn_treasure(width, height):
     }
 
 
-def fire_gun(bullets, player_x, player_y, gun, now, power_level):
+def spawn_enemy_bullet(enemy, lane_shift=0):
+    enemy_type = enemy["type"]
+    shot = enemy_type["shot"]
+    return {
+        "x": enemy["x"] - 1,
+        "y": enemy["y"] + lane_shift,
+        "dx": shot["speed"],
+        "damage": shot["damage"],
+        "char": shot["char"],
+        "color": shot["color"],
+    }
+
+
+def fire_gun(bullets, player_x, player_y, gun, now, power_level, damage_multiplier=1.0, muzzle_offset=5):
     projectiles = list(gun["projectiles"])
 
     if gun["id"] == "rapid" and power_level >= 1:
@@ -432,12 +597,13 @@ def fire_gun(bullets, player_x, player_y, gun, now, power_level):
         ]
 
     for projectile in projectiles:
+        boosted_damage = max(1, int(round(projectile["damage"] * damage_multiplier)))
         bullets.append(
             {
-                "x": player_x + 5,
+                "x": player_x + muzzle_offset,
                 "y": player_y + projectile["offset_y"],
                 "dx": projectile["dx"],
-                "damage": projectile["damage"],
+                "damage": boosted_damage,
                 "char": projectile["char"],
                 "color": projectile["color"],
                 "fired": now,
@@ -469,22 +635,29 @@ def award_treasure(lives, power_level, difficulty):
 
 def explosion_cells(effect, age):
     style = EXPLOSION_STYLES.get(effect["style"], EXPLOSION_STYLES["spark"])
+    if not isinstance(style, list) or not style:
+        return {(effect["x"], effect["y"]): ("*", 3)}
+
     if effect["duration"] <= 0:
         phase_index = len(style) - 1
     else:
         phase_index = min(len(style) - 1, int((age / effect["duration"]) * len(style)))
 
-    phase = style[phase_index]
-    cells = {(effect["x"], effect["y"]): (phase["char"], phase["color"])}
-    for offset_x, offset_y in phase["offsets"]:
+    phase = style[max(0, phase_index)]
+    phase_char = phase.get("char", "*")
+    phase_color = phase.get("color", 3)
+    phase_offsets = phase.get("offsets", [])
+
+    cells = {(effect["x"], effect["y"]): (phase_char, phase_color)}
+    for offset_x, offset_y in phase_offsets:
         cells[(effect["x"] + offset_x, effect["y"] + offset_y)] = (
-            phase["char"],
-            phase["color"],
+            phase_char,
+            phase_color,
         )
     return cells
 
 
-def start_screen(stdscr):
+def start_screen(stdscr, high_scores):
     selected_index = 1
     stdscr.nodelay(False)
 
@@ -495,9 +668,12 @@ def start_screen(stdscr):
         draw_center(stdscr, 5, "Shoot: Space")
         draw_center(stdscr, 6, "Switch guns: Left/Right arrows")
         draw_center(stdscr, 7, "Enemy speed: - slower   + faster")
-        draw_center(stdscr, 8, "Pause: P    Quit: Q")
+        draw_center(stdscr, 8, "Shield: X    Pause: P    Quit: Q")
+        if high_scores:
+            best = high_scores[0]
+            draw_center(stdscr, 3, f"High Score: {best['score']} ({best['difficulty']})")
         draw_center(stdscr, 10, "Enemies: scout dart   spinner core   brute block")
-        draw_center(stdscr, 11, "Treasure: shoot loot crates for Vigor or Power")
+        draw_center(stdscr, 11, "Treasure: 5s Titan Boost (ship grows + 2x damage)")
         draw_center(stdscr, 12, "Choose difficulty:")
 
         for index, difficulty in enumerate(DIFFICULTY_LEVELS):
@@ -530,11 +706,24 @@ def start_screen(stdscr):
                     return difficulty
 
 
-def game_over_screen(stdscr, score):
+def game_over_screen(stdscr, score, difficulty, high_scores, rank):
     stdscr.clear()
-    draw_center(stdscr, 5, "GAME OVER")
-    draw_center(stdscr, 7, f"Final score: {score}")
-    draw_center(stdscr, 9, "Press R to restart or Q to quit")
+    draw_center(stdscr, 3, "GAME OVER")
+    draw_center(stdscr, 5, f"Final score: {score} ({difficulty['name']})")
+    if rank:
+        draw_center(stdscr, 6, f"New leaderboard rank: #{rank}")
+    else:
+        draw_center(stdscr, 6, "No leaderboard entry this run")
+
+    draw_center(stdscr, 8, "Top Scores")
+    for index, entry in enumerate(high_scores[:5]):
+        draw_center(
+            stdscr,
+            9 + index,
+            f"{index + 1:>2}. {entry['score']:>5}  {entry['difficulty']:<6}  {entry['timestamp']}",
+        )
+
+    draw_center(stdscr, 15, "Press R to restart or Q to quit")
     stdscr.refresh()
 
     stdscr.nodelay(False)
@@ -576,6 +765,7 @@ def run_game(stdscr):
     curses.init_pair(5, curses.COLOR_MAGENTA, -1)
     curses.init_pair(6, curses.COLOR_BLUE, -1)
     sound = SoundEngine()
+    high_scores = load_high_scores()
     stdscr.nodelay(True)
     stdscr.timeout(0)
 
@@ -593,7 +783,7 @@ def run_game(stdscr):
             time.sleep(0.05)
             continue
 
-        difficulty = start_screen(stdscr)
+        difficulty = start_screen(stdscr, high_scores)
         if difficulty is None:
             return
         sound.play("start", min_interval=0.3)
@@ -603,6 +793,7 @@ def run_game(stdscr):
         gun_index = 1
         bullets = []
         enemies = []
+        enemy_bullets = []
         treasures = []
         explosions = []
         score = 0
@@ -611,6 +802,10 @@ def run_game(stdscr):
         status_message = None
         last_shot_time = 0.0
         enemy_step_interval = ENEMY_STEP_INTERVAL
+        shield_until = 0.0
+        shield_ready_at = 0.0
+        boost_until = 0.0
+        boss_next_score = BOSS_SCORE_STEP
         last_frame_time = time.time()
 
         while lives > 0:
@@ -618,9 +813,11 @@ def run_game(stdscr):
             now = time.time()
             delta = now - last_frame_time
             last_frame_time = now
+            boost_active = now < boost_until
+            ship_span = 3 if boost_active else 2
 
             height, width = stdscr.getmaxyx()
-            player_y = clamp(player_y, 3, max(3, height - 4))
+            player_y = clamp(player_y, 1 + ship_span, max(1 + ship_span, height - (2 + ship_span)))
             gun = GUN_TYPES[gun_index]
 
             key = stdscr.getch()
@@ -654,15 +851,38 @@ def run_game(stdscr):
             elif key in GUN_BY_KEY:
                 gun_index = select_gun(GUN_BY_KEY[key], sound)
                 gun = GUN_TYPES[gun_index]
+            elif key in (ord("x"), ord("X")):
+                if now >= shield_ready_at:
+                    shield_until = now + SHIELD_DURATION
+                    shield_ready_at = now + SHIELD_COOLDOWN
+                    status_message = set_status_message("AEGIS ONLINE", now)
+                    sound.play("shield_up", min_interval=0.1)
             elif key == ord(" "):
                 if now - last_shot_time >= gun["cooldown"]:
-                    fire_gun(bullets, player_x, player_y, gun, now, power_level)
+                    fire_gun(
+                        bullets,
+                        player_x,
+                        player_y,
+                        gun,
+                        now,
+                        power_level,
+                        damage_multiplier=BOOST_POWER_MULTIPLIER if boost_active else 1.0,
+                        muzzle_offset=6 if boost_active else 5,
+                    )
                     last_shot_time = now
                     sound.play(gun["sound"], min_interval=0.03)
 
-            player_y = clamp(player_y, 3, max(3, height - 4))
+            player_y = clamp(player_y, 1 + ship_span, max(1 + ship_span, height - (2 + ship_span)))
 
-            if len(enemies) < MAX_ENEMIES and random.random() < difficulty["enemy_spawn_chance"]:
+            boss_alive = any(enemy["type"]["id"] == "boss" for enemy in enemies)
+            if score >= boss_next_score and not boss_alive:
+                enemies.append(spawn_boss(width, height))
+                status_message = set_status_message("BOSS WAVE INBOUND", now)
+                boss_next_score += BOSS_SCORE_STEP
+                boss_alive = True
+
+            spawn_chance = difficulty["enemy_spawn_chance"] * (0.35 if boss_alive else 1.0)
+            if len(enemies) < MAX_ENEMIES and random.random() < spawn_chance:
                 enemies.append(spawn_enemy(width, height))
             if len(treasures) < MAX_TREASURES and random.random() < difficulty["treasure_spawn_chance"]:
                 treasures.append(spawn_treasure(width, height))
@@ -673,6 +893,7 @@ def run_game(stdscr):
 
             for enemy in enemies:
                 enemy["move_timer"] += delta
+                enemy["fire_timer"] += delta
                 move_threshold = max(
                     MIN_ENEMY_STEP_INTERVAL / 2,
                     enemy_step_interval
@@ -681,6 +902,35 @@ def run_game(stdscr):
                 if enemy["move_timer"] >= move_threshold:
                     enemy["x"] -= 1
                     enemy["move_timer"] = 0.0
+
+                if enemy["type"]["id"] == "boss":
+                    enemy["drift_timer"] += delta
+                    if enemy["drift_timer"] >= 0.12:
+                        enemy["y"] += enemy["drift"]
+                        if enemy["y"] <= 6 or enemy["y"] >= height - 6:
+                            enemy["drift"] *= -1
+                            enemy["y"] = clamp(enemy["y"], 6, max(6, height - 6))
+                        enemy["drift_timer"] = 0.0
+
+                fire_threshold = enemy["type"]["fire_cooldown"] / difficulty["enemy_speed_scale"]
+                while enemy["fire_timer"] >= fire_threshold:
+                    enemy["fire_timer"] -= fire_threshold
+                    if len(enemy_bullets) >= MAX_ENEMY_BULLETS or enemy["x"] <= player_x + 5:
+                        continue
+                    if enemy["type"]["id"] == "boss":
+                        for lane_shift in (-2, 0, 2):
+                            if len(enemy_bullets) < MAX_ENEMY_BULLETS and random.random() < 0.92:
+                                enemy_bullets.append(spawn_enemy_bullet(enemy, lane_shift=lane_shift))
+                    elif random.random() < 0.82:
+                        enemy_bullets.append(spawn_enemy_bullet(enemy))
+
+            for enemy_bullet in enemy_bullets:
+                enemy_bullet["x"] -= enemy_bullet["dx"]
+            enemy_bullets = [
+                enemy_bullet
+                for enemy_bullet in enemy_bullets
+                if enemy_bullet["x"] > 0
+            ]
 
             for treasure in treasures:
                 treasure["move_timer"] += delta
@@ -696,6 +946,7 @@ def run_game(stdscr):
                     treasure["fall_timer"] = 0.0
 
             bullets_to_remove = set()
+            enemy_bullets_to_remove = set()
             destroyed_enemy_ids = set()
             destroyed_treasure_ids = set()
             for bullet_index, bullet in enumerate(bullets):
@@ -716,6 +967,9 @@ def run_game(stdscr):
                                 )
                             )
                             sound.play(enemy_type["destroy_sound"], min_interval=0.03)
+                            if enemy_type["id"] == "boss":
+                                lives += 1
+                                status_message = set_status_message("BOSS DOWN +1 LIFE", now)
                         else:
                             explosions.append(
                                 make_explosion(
@@ -728,27 +982,50 @@ def run_game(stdscr):
                             sound.play(enemy_type["hit_sound"], min_interval=0.03)
                         break
                 else:
-                    for treasure in treasures:
-                        if (bullet["x"], bullet["y"]) in treasure_cells(treasure):
+                    for enemy_bullet_index, enemy_bullet in enumerate(enemy_bullets):
+                        if bullet["x"] == enemy_bullet["x"] and bullet["y"] == enemy_bullet["y"]:
                             bullets_to_remove.add(bullet_index)
-                            destroyed_treasure_ids.add(id(treasure))
-                            lives, power_level, reward_text = award_treasure(
-                                lives, power_level, difficulty
-                            )
+                            enemy_bullets_to_remove.add(enemy_bullet_index)
                             explosions.append(
                                 make_explosion(
-                                    treasure["x"] + 1,
-                                    treasure["y"],
-                                    "treasure",
-                                    duration_multiplier=1.1,
+                                    bullet["x"],
+                                    bullet["y"],
+                                    "spark",
+                                    duration_multiplier=0.65,
                                 )
                             )
-                            status_message = set_status_message(reward_text, now)
-                            sound.play("treasure", min_interval=0.05)
                             break
+                    else:
+                        for treasure in treasures:
+                            if (bullet["x"], bullet["y"]) in treasure_cells(treasure):
+                                bullets_to_remove.add(bullet_index)
+                                destroyed_treasure_ids.add(id(treasure))
+                                lives, power_level, reward_text = award_treasure(
+                                    lives, power_level, difficulty
+                                )
+                                boost_until = now + BOOST_DURATION
+                                explosions.append(
+                                    make_explosion(
+                                        treasure["x"] + 1,
+                                        treasure["y"],
+                                        "treasure",
+                                        duration_multiplier=1.1,
+                                    )
+                                )
+                                status_message = set_status_message(
+                                    f"{reward_text} + TITAN BOOST x2",
+                                    now,
+                                )
+                                sound.play("treasure", min_interval=0.05)
+                                break
 
             bullets = [
                 bullet for index, bullet in enumerate(bullets) if index not in bullets_to_remove
+            ]
+            enemy_bullets = [
+                enemy_bullet
+                for index, enemy_bullet in enumerate(enemy_bullets)
+                if index not in enemy_bullets_to_remove
             ]
             enemies = [enemy for enemy in enemies if id(enemy) not in destroyed_enemy_ids]
             treasures = [treasure for treasure in treasures if id(treasure) not in destroyed_treasure_ids]
@@ -777,7 +1054,9 @@ def run_game(stdscr):
                 if all(cell_x > 0 for cell_x, _ in treasure_cells(treasure))
             ]
 
-            ship_hit_cells = set(ship_cells(player_x, player_y).keys())
+            boost_active = now < boost_until
+            ship_hit_cells = set(ship_cells(player_x, player_y, boosted=boost_active).keys())
+            shield_active = now < shield_until
             remaining_enemies = []
             for enemy in enemies:
                 if ship_hit_cells.intersection(enemy_cells(enemy).keys()):
@@ -795,6 +1074,26 @@ def run_game(stdscr):
                     remaining_enemies.append(enemy)
             enemies = remaining_enemies
 
+            remaining_enemy_bullets = []
+            for enemy_bullet in enemy_bullets:
+                if (enemy_bullet["x"], enemy_bullet["y"]) in ship_hit_cells:
+                    if shield_active:
+                        explosions.append(
+                            make_explosion(
+                                enemy_bullet["x"],
+                                enemy_bullet["y"],
+                                "spark",
+                                duration_multiplier=0.7,
+                            )
+                        )
+                        sound.play("shield_block", min_interval=0.02)
+                    else:
+                        lives -= enemy_bullet["damage"]
+                        took_damage = True
+                else:
+                    remaining_enemy_bullets.append(enemy_bullet)
+            enemy_bullets = remaining_enemy_bullets
+
             if took_damage:
                 sound.play("damage", min_interval=0.12)
 
@@ -809,6 +1108,8 @@ def run_game(stdscr):
                 f" Score: {score}   Lives: {lives}   Power: {power_level + 1}"
                 f"   Difficulty: {difficulty['name']} x{difficulty['score_multiplier']:.2f}"
                 f"   Gun: {gun['name']} [Left/Right]"
+                f"   Boost: {'ON' if boost_active else 'OFF'}"
+                f"   Shield: {'ON' if shield_active else 'RDY' if now >= shield_ready_at else f'{max(0.0, shield_ready_at - now):.1f}s'} [X]"
                 f"   Enemy speed: {enemy_speed_percent}% [+/-]   P: Pause   Q: Quit "
             )
             try:
@@ -826,8 +1127,33 @@ def run_game(stdscr):
                     stdscr.addstr(
                         2,
                         0,
-                        f" Loot: {status_message['text']} "[: max(0, width - 1)],
+                        f" Status: {status_message['text']} "[: max(0, width - 1)],
                         curses.color_pair(3) | curses.A_BOLD,
+                    )
+                except curses.error:
+                    pass
+
+            if boost_active:
+                try:
+                    stdscr.addstr(
+                        3,
+                        0,
+                        f" Titan Boost: {max(0.0, boost_until - now):.1f}s   Damage x{BOOST_POWER_MULTIPLIER:.1f} "[
+                            : max(0, width - 1)
+                        ],
+                        curses.color_pair(5) | curses.A_BOLD,
+                    )
+                except curses.error:
+                    pass
+
+            boss = next((enemy for enemy in enemies if enemy["type"]["id"] == "boss"), None)
+            if boss:
+                try:
+                    stdscr.addstr(
+                        4,
+                        0,
+                        f" BOSS {boss['type']['name']} HP: {boss['hp']} "[: max(0, width - 1)],
+                        curses.color_pair(2) | curses.A_BOLD,
                     )
                 except curses.error:
                     pass
@@ -842,6 +1168,20 @@ def run_game(stdscr):
                             bullet_x,
                             bullet["char"],
                             curses.color_pair(bullet["color"]) | curses.A_BOLD,
+                        )
+                    except curses.error:
+                        pass
+
+            for enemy_bullet in enemy_bullets:
+                bullet_x = enemy_bullet["x"]
+                bullet_y = enemy_bullet["y"]
+                if 0 < bullet_y < height and 0 < bullet_x < width:
+                    try:
+                        stdscr.addch(
+                            bullet_y,
+                            bullet_x,
+                            enemy_bullet["char"],
+                            curses.color_pair(enemy_bullet["color"]) | curses.A_BOLD,
                         )
                     except curses.error:
                         pass
@@ -901,7 +1241,7 @@ def run_game(stdscr):
                         except curses.error:
                             pass
 
-            for (ship_x, ship_y), (ship_char, color_pair) in ship_cells(player_x, player_y).items():
+            for (ship_x, ship_y), (ship_char, color_pair) in ship_cells(player_x, player_y, boosted=boost_active).items():
                 if 1 < ship_y < height and 0 < ship_x < width:
                     try:
                         stdscr.addch(
@@ -913,6 +1253,29 @@ def run_game(stdscr):
                     except curses.error:
                         pass
 
+            if shield_active:
+                aura_points = [
+                    (player_x - 1, player_y - 2),
+                    (player_x - 1, player_y + 2),
+                    (player_x + 1, player_y - 3),
+                    (player_x + 1, player_y + 3),
+                    (player_x + 3, player_y - 3),
+                    (player_x + 3, player_y + 3),
+                    (player_x + 5, player_y - 2),
+                    (player_x + 5, player_y + 2),
+                ]
+                for aura_x, aura_y in aura_points:
+                    if 1 < aura_y < height and 0 < aura_x < width:
+                        try:
+                            stdscr.addch(
+                                aura_y,
+                                aura_x,
+                                "*",
+                                curses.color_pair(6) | curses.A_BOLD,
+                            )
+                        except curses.error:
+                            pass
+
             stdscr.refresh()
 
             elapsed = time.time() - frame_start
@@ -921,7 +1284,8 @@ def run_game(stdscr):
                 time.sleep(delay)
 
         sound.play("game_over", min_interval=0.5)
-        restart = game_over_screen(stdscr, score)
+        high_scores, rank = record_high_score(high_scores, score, difficulty["name"])
+        restart = game_over_screen(stdscr, score, difficulty, high_scores, rank)
         if not restart:
             return
 

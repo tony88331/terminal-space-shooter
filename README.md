@@ -7,6 +7,11 @@ A fast, side-scrolling terminal shooter built with Python `curses`.
 - Shooter anchored on the left, enemies fly in from the right
 - Three enemy classes with different shapes, health, scores, movement speeds, hit sounds, and explosion styles
 - Three switchable gun types with distinct firing patterns: rapid, spread, and cannon
+- Enemy return fire with class-specific projectile styles and damage
+- Periodic boss waves (`Dreadnought`) with multi-lane attacks
+- Persistent top-10 leaderboard saved across runs
+- Treasure crates trigger 5-second Titan Boost (larger ship + 2x damage)
+- Timed `Aegis` shield to block incoming enemy shots
 - Real-time enemy speed control
 - Colorized HUD, ship, bullets, enemies, and hit effects
 - Sound effects for weapon changes, shooting, hits, damage, and game over
@@ -19,6 +24,7 @@ A fast, side-scrolling terminal shooter built with Python `curses`.
 - `-`: Decrease enemy speed
 - `+` or `=`: Increase enemy speed
 - `P`: Pause / resume
+- `X`: Activate shield (cooldown-based)
 - `Q`: Quit
 
 ## Enemy Types
